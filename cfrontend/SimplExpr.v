@@ -14,52 +14,23 @@
     Side effects are pulled out of Compcert C expressions. *)
 
 Require Import Coqlib.
+Require Import MoSel.
 Require Import Errors.
 Require Import Integers.
 Require Import Floats.
 Require Import Values.
 Require Import Memory.
 Require Import AST.
+Export gensym.
 Require Import Ctypes.
 Require Import Cop.
 Require Import Csyntax.
 Require Import Clight.
-
 Local Open Scope string_scope.
 Local Open Scope list_scope.
 
-(** State and error monad for generating fresh identifiers. *)
+(* (** State and error monad for generating fresh identifiers. *) *)
 
-Record generator : Type := mkgenerator {
-  gen_next: ident;
-  gen_trail: list (ident * type)
-}.
-
-Inductive result (A: Type) (g: generator) : Type :=
-  | Err: Errors.errmsg -> result A g
-  | Res: A -> forall (g': generator), Ple (gen_next g) (gen_next g') -> result A g.
-
-Arguments Err [A g].
-Arguments Res [A g].
-
-Definition mon (A: Type) := forall (g: generator), result A g.
-
-Definition ret {A: Type} (x: A) : mon A :=
-  fun g => Res x g (Ple_refl (gen_next g)).
-
-Definition error {A: Type} (msg: Errors.errmsg) : mon A :=
-  fun g => Err msg.
-
-Definition bind {A B: Type} (x: mon A) (f: A -> mon B) : mon B :=
-  fun g =>
-    match x g with
-      | Err msg => Err msg
-      | Res a g' i =>
-          match f a g' with
-          | Err msg => Err msg
-          | Res b g'' i' => Res b g'' (Ple_trans _ _ _ i i')
-      end
-    end.
 
 Definition bind2 {A B C: Type} (x: mon (A * B)) (f: A -> B -> mon C) : mon C :=
   bind x (fun p => f (fst p) (snd p)).
@@ -72,17 +43,6 @@ Notation "'do' ( X , Y ) <- A ; B" := (bind2 A (fun X Y => B))
    : gensym_monad_scope.
 
 Local Open Scope gensym_monad_scope.
-
-Parameter first_unused_ident: unit -> ident.
-
-Definition initial_generator (x: unit) : generator :=
-  mkgenerator (first_unused_ident x) nil.
-
-Definition gensym (ty: type): mon ident :=
-  fun (g: generator) =>
-    Res (gen_next g)
-        (mkgenerator (Pos.succ (gen_next g)) ((gen_next g, ty) :: gen_trail g))
-        (Ple_succ (gen_next g)).
 
 (** Construct a sequence from a list of statements.  To facilitate the
    proof, the sequence is nested to the left and starts with a [Sskip]. *)
@@ -260,21 +220,16 @@ Fixpoint transl_expr (dst: destination) (a: Csyntax.expr) : mon (list statement 
   | Csyntax.Eaddrof l ty =>
       do (sl, a) <- transl_expr For_val l;
       ret (finish dst sl (Eaddrof' a ty))
-  | Csyntax.Eunop op r1 ty =>
+  | Csyntax.Eunop ope r1 ty =>
       do (sl1, a1) <- transl_expr For_val r1;
-      ret (finish dst sl1 (Eunop op a1 ty))
-  | Csyntax.Ebinop op r1 r2 ty =>
+      ret (finish dst sl1 (Eunop ope a1 ty))
+  | Csyntax.Ebinop ope r1 r2 ty =>
       do (sl1, a1) <- transl_expr For_val r1;
       do (sl2, a2) <- transl_expr For_val r2;
-      ret (finish dst (sl1 ++ sl2) (Ebinop op a1 a2 ty))
+      ret (finish dst (sl1 ++ sl2) (Ebinop ope a1 a2 ty))
   | Csyntax.Ecast r1 ty =>
-      match dst with
-      | For_val | For_set _ =>
-          do (sl1, a1) <- transl_expr For_val r1;
-          ret (finish dst sl1 (Ecast a1 ty))
-      | For_effects =>
-          transl_expr For_effects r1
-      end
+      do (sl1, a1) <- transl_expr For_val r1;
+      ret (finish dst sl1 (Ecast a1 ty))
   | Csyntax.Eseqand r1 r2 ty =>
       do (sl1, a1) <- transl_expr For_val r1;
       match dst with
@@ -347,7 +302,7 @@ Fixpoint transl_expr (dst: destination) (a: Csyntax.expr) : mon (list statement 
           ret (sl1 ++ sl2 ++ make_assign a1 a2 :: nil,
                dummy_expr)
       end
-  | Csyntax.Eassignop op l1 r2 tyres ty =>
+  | Csyntax.Eassignop ope l1 r2 tyres ty =>
       let ty1 := Csyntax.typeof l1 in
       do (sl1, a1) <- transl_expr For_val l1;
       do (sl2, a2) <- transl_expr For_val r2;
@@ -357,11 +312,11 @@ Fixpoint transl_expr (dst: destination) (a: Csyntax.expr) : mon (list statement 
           do t <- gensym ty1;
           ret (finish dst
                  (sl1 ++ sl2 ++ sl3 ++
-                  Sset t (Ecast (Ebinop op a3 a2 tyres) ty1) ::
+                  Sset t (Ecast (Ebinop ope a3 a2 tyres) ty1) ::
                   make_assign a1 (Etempvar t ty1) :: nil)
                  (Etempvar t ty1))
       | For_effects =>
-          ret (sl1 ++ sl2 ++ sl3 ++ make_assign a1 (Ebinop op a3 a2 tyres) :: nil,
+          ret (sl1 ++ sl2 ++ sl3 ++ make_assign a1 (Ebinop ope a3 a2 tyres) :: nil,
                dummy_expr)
       end
   | Csyntax.Epostincr id l1 ty =>
@@ -508,19 +463,18 @@ with transl_lblstmt (ls: Csyntax.labeled_statements) : mon labeled_statements :=
   end.
 
 (** Translation of a function *)
-
 Definition transl_function (f: Csyntax.function) : res function :=
-  match transl_stmt f.(Csyntax.fn_body) (initial_generator tt) with
-  | Err msg =>
+  match run (transl_stmt f.(Csyntax.fn_body)) gensym.initial_state  with
+  | Error msg =>
       Error msg
-  | Res tbody g i =>
+  | OK tbody =>
       OK (mkfunction
               f.(Csyntax.fn_return)
               f.(Csyntax.fn_callconv)
               f.(Csyntax.fn_params)
               f.(Csyntax.fn_vars)
-              g.(gen_trail)
-              tbody)
+              (trail (fst tbody))
+              (snd tbody))
   end.
 
 Local Open Scope error_monad_scope.
