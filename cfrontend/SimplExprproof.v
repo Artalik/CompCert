@@ -387,6 +387,21 @@ Section PRESERVATION.
     | _ => fail "No rec"
     end.
 
+  Lemma locally_absorb_out : forall X P Q (le : t X),
+      ⊢ locally le (fun le' => <absorb> (P le' ∗ ⌜ Q ⌝)) -∗ locally le (fun le' => P le' ∗ ⌜ Q ⌝).
+  Proof.
+    iIntros "* HA". iApply (locally_consequence with "HA"). iIntros; norm_all.
+  Qed.
+
+
+  Lemma locally_absorb_wand : forall X P Q (le : t X),
+      ⊢ locally le (fun le' => <absorb> (P le' -∗ Q le')) -∗
+        locally le (fun le' => P le' -∗ <absorb> Q le').
+  Proof.
+    iIntros "* HA". iApply (locally_consequence with "HA"). iIntros; norm_all.
+    iApply ("HD" with "HF").
+  Qed.
+
   Ltac locally_core b :=
     match goal with
     | |- envs_entails _ (locally ?le (fun le' => ∀ a, ?P )) =>
@@ -399,8 +414,10 @@ Section PRESERVATION.
     | |- envs_entails _ (locally ?le (fun le' => locally le' (fun le'' => ?P ))) =>
       iApply locally_idempotence
     | |- envs_entails _ (locally ?le (fun _ => ?P )) =>
-      iApply locally_simpl; auto
-    | _ => auto
+      iApply locally_simpl; norm_all
+    | |- envs_entails _ (locally ?le (fun le' => ?P ∗ ⌜ ?Q ⌝)) =>
+      iApply locally_absorb_out; iApply locally_modout; locally_core b
+    | _ => norm_all
     end.
 
   Lemma tr_expr_invariant :
@@ -411,73 +428,79 @@ Section PRESERVATION.
     apply tr_expr_exprlist; intros; iIntros; simpl;
       try iApply locally_modout; norm_all; try iModIntro; apply_ind apply_ind_invariant;
         locally_core true.
-    - destruct dst; norm_all; locally_core false.
+    - destruct dst; norm_all; locally_core false; norm_all; try iModIntro.
       + iApply locally_frame_r; locally_core true; auto.
       + iApply locally_and. iSplit; locally_core false.
         * iDestruct "HC" as "[$ _]". auto.
         * iDestruct "HC" as "[_ HA]". norm_all. iExists _. iApply locally_sep_indep_r.
         iSplitL "HG"; eauto. locally_core true. eauto. iSplit; auto.
-    - iApply (locally_frame_l with "HE"). locally_core true.
+    - iApply (locally_frame_l with "HE"). locally_core true. iModIntro.
       iApply locally_sep_indep_r. iSplitL; auto.
     - iApply (locally_frame_l with "HE"). locally_core true. iApply locally_sep_indep_r.
       iSplitL "HG"; auto.
-    - iApply (locally_frame_l with "HE"). locally_core true.
+    - iApply (locally_frame_l with "HE"). locally_core true. iModIntro.
       iApply locally_sep_indep_r. iSplitL; auto.
-    - iApply (locally_frame_l with "HE"). locally_core true. iApply locally_sep_indep_r.
-      iSplitL; auto.
-    - iApply (locally_frame_l with "HE"). locally_core true. iApply locally_sep_indep_r.
-      iSplitL; auto.
+    - iApply (locally_frame_l with "HE"). locally_core true. iModIntro.
+      iApply locally_sep_indep_r. iSplitL; auto.
+    - iApply (locally_frame_l with "HE"). locally_core true. iModIntro.
+      iApply locally_sep_indep_r. iSplitL; auto.
     - iApply (locally_frame_l with "HE"). locally_core true.
       iApply (locally_delete_2 with "HG HI"). iIntros. iFrame. auto.
-    - iApply (locally_frame_l with "HE"). locally_core true.
+    - iApply (locally_frame_l with "HE"). locally_core true. iModIntro.
       iApply locally_sep_indep_r. iSplitL; auto.
     - destruct dst; norm_all; apply_ind apply_ind_invariant; locally_core true;
-      iApply (locally_delete_2 with "HE HG"); iIntros; iFrame; auto.
+      iApply (locally_delete_2 with "HE HG"); iIntros; iFrame;  norm_all.
     - destruct dst; norm_all; apply_ind apply_ind_invariant; locally_core true;
-        iApply (locally_delete_2 with "HE HG"); iIntros; iFrame; auto.
+        iApply (locally_delete_2 with "HE HG"); iIntros; iFrame; norm_all.
     - destruct dst; norm_all; apply_ind apply_ind_invariant; locally_core true.
-      + iApply (locally_sep with "HE"). iApply locally_sep_indep_r.
-        iSplitL; auto. iApply locally_and. iSplit. iDestruct "HG" as "[HB _]". iApply (H0 with "HB").
-        iDestruct "HG" as "[_ HB]". iApply (H1 with "HB").
-      + iApply (locally_delete_3 with "HE HG HI"). iIntros. iFrame. auto.
+      + iApply (locally_sep with "HE"). iApply locally_absorb_out.
+        iApply locally_modout. norm_all. iModIntro. iApply locally_sep_indep_r.
+        iSplitL; auto. iApply locally_and. iSplit. iDestruct "HG" as "[HB _]".
+        iApply (H0 with "HB"). iDestruct "HG" as "[_ HB]". iApply (H1 with "HB").
+      + iApply (locally_delete_3 with "HE HG HI"). iIntros. iFrame.
       + iApply (locally_frame_l with "HE"). locally_core true.
-        iApply (locally_sep with "HG"). iApply locally_sep_indep_r. iSplitL; auto.
-        iApply locally_and. iSplit. iDestruct "HI" as "[HB _]". iApply (H0 with "HB").
-        iDestruct "HI" as "[_ HB]". iApply (H1 with "HB").
+        iApply (locally_sep with "HG"). iApply locally_absorb_out.
+        iApply locally_modout. norm_all. iModIntro. iApply locally_sep_indep_r.
+        iSplitL; auto. iApply locally_and. iSplit. iDestruct "HI" as "[HB _]".
+        iApply (H0 with "HB"). iDestruct "HI" as "[_ HB]". iApply (H1 with "HB").
     - destruct dst; norm_all; apply_ind apply_ind_invariant; locally_core true.
       + iApply (locally_sep with "HE"). iApply (locally_sep with "HG"). locally_core true.
-      + iApply (locally_delete_2 with "HE HG"). iIntros. iFrame. auto.
+      + iApply (locally_delete_2 with "HE HG"). iIntros. iFrame.
       + iApply (locally_sep with "HE"). iApply (locally_sep with "HG"). locally_core true.
         iIntros. iSplitL "HI"; auto.
     - destruct dst; norm_all; apply_ind apply_ind_invariant; locally_core true.
       + iApply (locally_frame_l with "HE"). locally_core true.
-        iApply (locally_delete_2 with "HG HI"). iIntros. iFrame. auto.
-      + iApply (locally_delete_2 with "HE HG"). iIntros. iFrame. auto.
+        iApply (locally_delete_2 with "HG HI"). iIntros. iFrame. norm_all.
+      + iApply (locally_delete_2 with "HE HG"). iIntros. iFrame.
       + iApply (locally_frame_l with "HE"). locally_core true.
-        iApply (locally_delete_2 with "HI HG"). iIntros "* $ $". iSplitL "HK"; auto.
+        iApply (locally_delete_2 with "HI HG"). iIntros "* $ $".
+        iSplitL "HK"; auto. norm_all.
     - destruct dst; norm_all; apply_ind apply_ind_invariant; locally_core true.
-      + iApply (locally_sep with "HE"). iApply (locally_frame_l with "HJ"). locally_core true.
+      + iApply (locally_sep with "HE"). iApply (locally_frame_l with "HJ").
+        locally_core true.
       + iApply (locally_sep with "HE"). locally_core true.
-      + iApply (locally_sep with "HE"). iApply (locally_frame_l with "HJ"). locally_core true.
+      + iApply (locally_sep with "HE"). iApply (locally_frame_l with "HJ").
+        locally_core true.
     - iApply (locally_delete_2 with "HE HG"). iIntros "* $ $ //".
     - destruct dst; norm_all; apply_ind apply_ind_invariant; locally_core true.
       + iApply (locally_frame_l with "HE"). locally_core true.
-        iApply (locally_delete_2 with "HI HK"). iIntros "* $ $ //". iSplitL; auto.
+        iApply (locally_delete_2 with "HI HK"). iIntros "* $ $ //". iFrame. norm_all.
       + iApply (locally_delete_2 with "HE HG"). iIntros "* $ $ //".
       + iApply (locally_frame_l with "HE"). locally_core true.
-        iApply (locally_delete_2 with "HI HK"). iIntros "* $ $ //". iSplitL; auto.
+        iApply (locally_delete_2 with "HI HK"). iIntros "* $ $ //". iFrame. norm_all.
     - destruct dst; norm_all; apply_ind apply_ind_invariant; locally_core true.
       + iApply (locally_frame_l with "HE"). locally_core true.
         iApply (locally_sep with "HG"). locally_core true.
-      + iApply (locally_sep with "HE"). locally_core true.
+      + iModIntro. iApply (locally_sep with "HE"). locally_core true.
       + iApply (locally_frame_l with "HE"). locally_core true.
         iApply (locally_sep with "HG"). locally_core true.
     - destruct dst; norm_all; apply_ind apply_ind_invariant; locally_core true.
-      + iApply (locally_sep with "HE"). locally_core true.
+      + iModIntro. iApply (locally_sep with "HE"). locally_core true.
       + instantiate (2 := x0).
         destruct (Pos.eq_dec x0 (sd_temp sd)); norm_all;
-          apply_ind apply_ind_invariant; locally_core true. iApply locally_sep_indep_r. iFrame.
-    - iApply (locally_delete_2 with "HB HD"). iIntros "* $ $ //".
+          apply_ind apply_ind_invariant; locally_core true.
+        iApply locally_sep_indep_r. iFrame.
+    - iApply (locally_delete_2 with "HB HD"). iIntros "* $ $ //". norm_all.
   Qed.
 
 
@@ -493,7 +516,7 @@ Lemma tr_expr_leftcontext_rec:
     tr_expr le dst' e sl1 a'
     ∗ ⌜ sl = sl1 ++ sl2 ⌝
     ∗ (∀ e',
-          \⌜ Csyntax.typeof e' = Csyntax.typeof e ⌝ -∗
+          ⌜ Csyntax.typeof e' = Csyntax.typeof e ⌝ -∗
        (∀ sl3,
         locally le (fun le' => tr_expr le' dst' e' sl3 a'
                               -∗ tr_expr le' dst (C e') (sl3 ++ sl2) a))))
@@ -505,18 +528,20 @@ Lemma tr_expr_leftcontext_rec:
       tr_expr le dst' e sl1 a'
     ∗ ⌜sl = sl1 ++ sl2⌝
     ∗ (∀ e',
-    \⌜ Csyntax.typeof e' = Csyntax.typeof e ⌝ -∗
+    ⌜ Csyntax.typeof e' = Csyntax.typeof e ⌝ -∗
     (∀ sl3,
         locally le (fun le' => tr_expr le' dst' e' sl3 a' -∗ tr_exprlist le' (C e') (sl3 ++ sl2) a)))
     ).
 Proof.
 
-  Ltac init H0 e' H :=
+  Ltac init H0 H :=
     iDestruct (H0 with H) as (dst' sl1 sl0 a') "[HA [% HHHHH]]"; subst;
     repeat iExists _; iSplitL "HA"; eauto; iSplit;
     [iPureIntro; simpl; try rewrite <- app_assoc; auto |
-     iIntros "* % *"; iDestruct ("HHHHH" $! e' with "[]") as "HHHHH"; auto;
-     iApply (locally_conseq with "HHHHH"); locally_core true].
+     iIntros "* _A *"].
+
+  Ltac core1 H e' := iDestruct ("HHHHH" $! e' with H) as "HHHHH"; auto;
+     iApply (locally_conseq with "HHHHH"); locally_core true.
 
   Ltac finish_him := iIntros "**"; try iModIntro; iFrame; repeat iExists _; iFrame;
                      try rewrite <- app_assoc; auto.
@@ -524,114 +549,129 @@ Proof.
     apply leftcontext_leftcontextlist_ind; intros; simpl; iIntros; norm_all.
     (*base*)
     - repeat iExists _. iSplitL; eauto. iSplit. iPureIntro; apply app_nil_end.
-      iIntros "* % *". iApply locally_simpl. rewrite <- app_nil_end. eauto.
+      iIntros "* HA *". iApply locally_simpl. rewrite <- app_nil_end.
+      iIntros "* HB". iApply tr_expr_abs. iFrame.
     (* deref *)
-    - init H0 e' "HF". iApply locally_simpl. finish_him.
+    - init H0 "HF". core1 "_A" e'. iApply locally_simpl. finish_him.
+
     (* field *)
-    - init H0 e' "HF". iApply locally_simpl. finish_him.
+    - init H0 "HF". core1 "_A" e'. iApply locally_simpl. finish_him.
+
     (* rvalof *)
-    - init H0 e' "HF". rewrite (typeof_context _ _ _ H _ _ a0). iApply locally_simpl. finish_him.
+    - init H0 "HF". iApply locally_absorb_wand. iApply locally_modout. norm_all.
+      iModIntro. core1 "[]" e'. iApply locally_simpl.
+      rewrite (typeof_context _ _ _ H _ _ H1). finish_him.
+
     (* addrof *)
-    - init H0 e' "HF". iApply locally_simpl. finish_him.
-    - init H0 e' "HF". iApply locally_simpl. finish_him.
+    - init H0 "HF". iApply locally_absorb_wand. iApply locally_modout. norm_all.
+      iModIntro. core1 "[]" e'. iApply locally_simpl. finish_him.
+    - init H0 "HF". core1 "_A" e'. iApply locally_simpl. finish_him.
     (* binop left *)
     - iDestruct (proj1 tr_expr_invariant with "HH") as "HC".
-      init H0 e' "HF". iApply (locally_consequence with "HC"). finish_him.
+      init H0 "HF". core1 "_A" e'. iApply (locally_consequence with "HC"). finish_him.
     (* binop right *)
     - iAssert (⌜x = nil⌝) as "%". iApply (tr_simple_expr_nil with "HF"); eauto.
       iDestruct (proj1 tr_expr_invariant with "HF") as "HC".
-      init H1 e' "HH". iApply (locally_consequence with "HC"). finish_him.
+      init H1 "HH". core1 "_A" e'. iApply (locally_consequence with "HC"). finish_him.
     (* cast *)
-    - init H0 e' "HF". iApply locally_simpl. finish_him.
+    - init H0 "HF". core1 "_A" e'. iApply locally_simpl. finish_him.
     (* seqand *)
-    - destruct dst; norm_all; iDestruct (proj1 tr_expr_invariant with "HF") as "HB"; init H0 e' "HD";
-        iApply (locally_consequence with "HB"); finish_him.
+    - destruct dst; norm_all; iDestruct (proj1 tr_expr_invariant with "HF") as "HB";
+        init H0 "HD"; core1 "_A" e'; iApply (locally_consequence with "HB"); finish_him.
     (* seqor *)
-    - destruct dst; norm_all; iDestruct (proj1 tr_expr_invariant with "HF") as "HF"; init H0 e' "HD";
-        iApply (locally_consequence with "HF"); finish_him.
+    - destruct dst; norm_all; iDestruct (proj1 tr_expr_invariant with "HF") as "HF";
+        init H0 "HD"; core1 "_A" e'; iApply (locally_consequence with "HF"); finish_him.
     (* condition *)
     - destruct dst; norm_all.
       + iDestruct (locally_and with "[HF]") as "HB". iSplit.
         iDestruct "HF" as "[HB _]". iApply (proj1 tr_expr_invariant with "HB").
         iDestruct "HF" as "[_ HB]". iApply (proj1 tr_expr_invariant with "HB").
-        init H0 e' "HD". iApply (locally_consequence with "HB"). finish_him.
+        init H0 "HD". core1 "_A" e'. iApply (locally_consequence with "HB"). finish_him.
       + iDestruct (proj1 tr_expr_invariant with "HF") as "HF".
         iDestruct (proj1 tr_expr_invariant with "HH") as "HH".
-        init H0 e' "HD".  iApply (locally_delete_2 with "HH HF"). finish_him.
+        init H0 "HD". core1 "_A" e'. iApply (locally_delete_2 with "HH HF"). finish_him.
       + iDestruct (locally_and with "[HH]") as "HH". iSplit.
         iDestruct "HH" as "[HB _]". iApply (proj1 tr_expr_invariant with "HB").
         iDestruct "HH" as "[_ HB]". iApply (proj1 tr_expr_invariant with "HB").
-        init H0 e' "HF". iApply (locally_consequence with "HH"). finish_him.
+        init H0 "HF". core1 "_A" e'. iApply (locally_consequence with "HH"). finish_him.
     - destruct dst; norm_all.
       + iDestruct (proj1 tr_expr_invariant with "HF") as "HF".
-        init H0 e' "HD". iApply (locally_consequence with "HF").
-        rewrite (typeof_context _ _ _ H _ _ a). finish_him.
-      + iDestruct (proj1 tr_expr_invariant with "HF") as "HF". init H0 e' "HD".
-        iApply (locally_consequence with "HF"). finish_him.
-      + iDestruct (proj1 tr_expr_invariant with "HF") as "HF". init H0 e' "HD".
-        iApply (locally_consequence with "HF"). rewrite (typeof_context _ _ _ H _ _ a). finish_him.
+        init H0 "HD". iApply locally_absorb_wand. iApply locally_modout. norm_all.
+        iModIntro. core1 "[]" e'. iApply (locally_consequence with "HF").
+        rewrite (typeof_context _ _ _ H _ _ H1). finish_him.
+      + iDestruct (proj1 tr_expr_invariant with "HF") as "HF". init H0 "HD".
+        core1 "_A" e'. iApply (locally_consequence with "HF"). finish_him.
+      + iDestruct (proj1 tr_expr_invariant with "HF") as "HF". init H0 "HD".
+        iApply locally_absorb_wand. iApply locally_modout. norm_all.
+        iModIntro. core1 "[]" e'. iApply (locally_consequence with "HF").
+        rewrite (typeof_context _ _ _ H _ _ H1). finish_him.
     - destruct dst; norm_all; iDestruct (tr_simple_expr_nil with "HD [] []") as "%"; auto;
-        iDestruct (proj1 tr_expr_invariant with "HD") as "HD"; init H1 e' "HF";
+        iDestruct (proj1 tr_expr_invariant with "HD") as "HD"; init H1 "HF"; core1 "_A" e';
          iApply (locally_consequence with "HD"); finish_him.
     - destruct dst; norm_all.
-      + iDestruct (proj1 tr_expr_invariant with "HH") as "HH". init H0 e' "HF".
-        rewrite (typeof_context _ _ _ H e' e _). iApply (locally_consequence with "HH"); finish_him.
-        auto.
-      + iDestruct (proj1 tr_expr_invariant with "HF") as "HF". init H0 e' "HD".
-        rewrite (typeof_context _ _ _ H e' e _). iApply (locally_consequence with "HF"); finish_him.
-        auto.
-      + iDestruct (proj1 tr_expr_invariant with "HH") as "HH". init H0 e' "HF".
-        rewrite (typeof_context _ _ _ H e' e _). iApply (locally_consequence with "HH"); finish_him.
-        auto.
+      + iDestruct (proj1 tr_expr_invariant with "HH") as "HH". init H0 "HF".
+        iApply locally_absorb_wand. iApply locally_modout. norm_all. iModIntro.
+        core1 "[]" e'. rewrite (typeof_context _ _ _ H e' e _).
+        iApply (locally_consequence with "HH"); finish_him. auto.
+      + iDestruct (proj1 tr_expr_invariant with "HF") as "HF". init H0 "HD".
+        iApply locally_absorb_wand. iApply locally_modout. norm_all. iModIntro.
+        core1 "[]" e'. rewrite (typeof_context _ _ _ H e' e _).
+        iApply (locally_consequence with "HF"); finish_him. auto.
+      + iDestruct (proj1 tr_expr_invariant with "HH") as "HH". init H0 "HF".
+        iApply locally_absorb_wand. iApply locally_modout. norm_all. iModIntro.
+        core1 "[]" e'. rewrite (typeof_context _ _ _ H e' e _).
+        iApply (locally_consequence with "HH"); finish_him. auto.
     - destruct dst; norm_all.
       + iDestruct (tr_simple_expr_nil with "HF [] []") as "%"; auto.
-        iDestruct (proj1 tr_expr_invariant with "HF") as "HF". init H1 e' "HH".
-        iApply (locally_consequence with "HF"); finish_him.
+        iDestruct (proj1 tr_expr_invariant with "HF") as "HF". init H1 "HH".
+        core1 "_A" e'. iApply (locally_consequence with "HF"); finish_him.
       + iDestruct (tr_simple_expr_nil with "HD [] []") as "%"; auto.
-        iDestruct (proj1 tr_expr_invariant with "HD") as "HD". init H1 e' "HF".
-        iApply (locally_consequence with "HD"); finish_him.
+        iDestruct (proj1 tr_expr_invariant with "HD") as "HD". init H1 "HF".
+        core1 "_A" e'. iApply (locally_consequence with "HD"); finish_him.
       + iDestruct (tr_simple_expr_nil with "HF [] []") as "%"; auto.
-        iDestruct (proj1 tr_expr_invariant with "HF") as "HF". init H1 e' "HH".
-        iApply (locally_consequence with "HF"); finish_him.
-    - destruct dst; norm_all; init H0 e' "HD"; iApply locally_simpl;
-        rewrite (typeof_context _ _ _ H e e' _); auto; iIntros "* HA !>"; repeat iExists _; iFrame;
-          repeat iExists _; iSplitL; auto; rewrite app_ass; auto.
+        iDestruct (proj1 tr_expr_invariant with "HF") as "HF". init H1 "HH".
+        core1 "_A" e'. iApply (locally_consequence with "HF"); finish_him.
+    - destruct dst; norm_all; init H0 "HD"; iApply locally_absorb_wand;
+        iApply locally_modout; norm_all; iModIntro; core1 "[]" e'; iApply locally_simpl;
+        rewrite (typeof_context _ _ _ H e e' _); auto; iIntros "* HA";
+          repeat iExists _; iFrame; repeat iExists _; iSplitL; auto;
+            rewrite app_ass; auto.
     - destruct dst; norm_all.
-      + iDestruct (proj2 tr_expr_invariant with "HJ") as "HJ". init H0 e' "HH".
-        iApply (locally_consequence with "HJ"). finish_him.
-      + iDestruct (proj2 tr_expr_invariant with "HF") as "HF". init H0 e' "HD".
-        iApply (locally_consequence with "HF"). finish_him.
-      + iDestruct (proj2 tr_expr_invariant with "HJ") as "HJ". init H0 e' "HH".
-        iApply (locally_consequence with "HJ"). finish_him.
+      + iDestruct (proj2 tr_expr_invariant with "HJ") as "HJ". init H0 "HH".
+        core1 "_A" e'. iApply (locally_consequence with "HJ"). finish_him.
+      + iDestruct (proj2 tr_expr_invariant with "HF") as "HF". init H0 "HD".
+        core1 "_A" e'. iApply (locally_consequence with "HF"). finish_him.
+      + iDestruct (proj2 tr_expr_invariant with "HJ") as "HJ". init H0 "HH".
+        core1 "_A" e'. iApply (locally_consequence with "HJ"). finish_him.
     - destruct dst; norm_all.
       + iDestruct (tr_simple_expr_nil with "HH [] []") as "%"; auto.
-        iDestruct (proj1 tr_expr_invariant with "HH") as "HH". init H1 e' "HJ".
-        iApply (locally_consequence with "HH"). finish_him.
+        iDestruct (proj1 tr_expr_invariant with "HH") as "HH". init H1 "HJ".
+        core1 "_A" e'. iApply (locally_consequence with "HH"). finish_him.
       + iDestruct (tr_simple_expr_nil with "HD [] []") as "%"; auto.
-        iDestruct (proj1 tr_expr_invariant with "HD") as "HD". init H1 e' "HF".
-        iApply (locally_consequence with "HD"). finish_him.
+        iDestruct (proj1 tr_expr_invariant with "HD") as "HD". init H1 "HF".
+        core1 "_A" e'. iApply (locally_consequence with "HD"). finish_him.
       + iDestruct (tr_simple_expr_nil with "HH [] []") as "%"; auto.
-        iDestruct (proj1 tr_expr_invariant with "HH") as "HH". init H1 e' "HJ".
-        iApply (locally_consequence with "HH"). finish_him.
+        iDestruct (proj1 tr_expr_invariant with "HH") as "HH". init H1 "HJ".
+        core1 "_A" e'. iApply (locally_consequence with "HH"). finish_him.
     - destruct dst; norm_all.
-      + init H0 e' "HF"; iApply locally_simpl; finish_him.
-      + init H0 e' "HD"; iApply locally_simpl; finish_him.
-      + init H0 e' "HF"; iApply locally_simpl; finish_him.
-    - iDestruct (proj1 tr_expr_invariant with "HF") as "HF". init H0 e' "HD".
-      iApply (locally_consequence with "HF"). finish_him.
+      + init H0 "HF"; core1 "_A" e'; iApply locally_simpl; finish_him.
+      + init H0 "HD"; core1 "_A" e'; iApply locally_simpl; finish_him.
+      + init H0 "HF"; core1 "_A" e'; iApply locally_simpl; finish_him.
+    - iDestruct (proj1 tr_expr_invariant with "HF") as "HF". init H0 "HD".
+      core1 "_A" e'. iApply (locally_consequence with "HF"). finish_him.
     - destruct dst; norm_all.
-      + init H0 e' "HD". iApply locally_simpl. finish_him.
-      + init H0 e' "HB". iApply locally_simpl. finish_him.
+      + init H0 "HD". core1 "_A" e'. iApply locally_simpl. finish_him.
+      + init H0 "HB". core1 "_A" e'. iApply locally_simpl. finish_him.
       + destruct (Pos.eq_dec x0 (sd_temp sd)) eqn:?; norm_all.
-        * init H0 e' "HB". iApply locally_simpl. finish_him.
+        * init H0 "HB". core1 "_A" e'. iApply locally_simpl. finish_him.
           instantiate (2 := (sd_temp sd)). rewrite Heqs. iFrame.
-        * init H0 e' "HD". iApply locally_simpl. finish_him.
+        * init H0 "HD". core1 "_A" e'. iApply locally_simpl. finish_him.
           instantiate (2 := x0). rewrite Heqs. iFrame.
-    - iDestruct (proj2 tr_expr_invariant with "HD") as "HD". init H0 e' "HB".
-      iApply (locally_consequence with "HD"). finish_him.
+    - iDestruct (proj2 tr_expr_invariant with "HD") as "HD". init H0 "HB".
+      core1 "_A" e'. iApply (locally_consequence with "HD"). finish_him.
     - iDestruct (tr_simple_expr_nil with "HB [] []") as "%"; auto.
-      iDestruct (proj1 tr_expr_invariant with "HB") as "HB". init H1 e' "HD".
-      iApply (locally_consequence with "HB"). finish_him.
+      iDestruct (proj1 tr_expr_invariant with "HB") as "HB". init H1 "HD".
+      core1 "_A" e'. iApply (locally_consequence with "HB"). finish_him.
 Qed.
 
 Theorem tr_expr_leftcontext:
@@ -642,7 +682,7 @@ Theorem tr_expr_leftcontext:
     tr_expr le dst' e sl1 a'
     ∗ ⌜ sl = sl1 ++ sl2 ⌝
     ∗ ∀ e',
-        \⌜ Csyntax.typeof e' = Csyntax.typeof e ⌝ -∗
+        ⌜ Csyntax.typeof e' = Csyntax.typeof e ⌝ -∗
         (∀ sl3,
         locally le (fun le' => tr_expr le' dst' e' sl3 a'
                               -∗ tr_expr le' dst (C e') (sl3 ++ sl2) a)).
@@ -1678,7 +1718,7 @@ Proof.
        -- iDestruct (tr_simple_lvalue with "HG") as "[% [% %]]"; eauto.
           iDestruct (proj1 tr_expr_invariant with "HI") as "HB".
           (* iDestruct (locally_set with "[HK] HB") as "[HB HC]"; eauto. *)
-          iDestruct (locally_set with "[HT] HB") as "[HB HD]"; eauto.
+          iDestruct (locally_set with "[HQ] HB") as "[HB HD]"; eauto.
           iDestruct (locally_elim with "HB") as "HB".
           iDestruct (tr_simple_rvalue with "HB") as "[% [% %]]"; eauto. subst.
           iDestruct (proj1 tr_expr_invariant with "HG") as "HA".
@@ -1776,7 +1816,7 @@ Proof.
      * unfold tr_rvalof. destruct (type_is_volatile (Csyntax.typeof l)) eqn:?; norm_all.
        -- iDestruct (tr_simple_lvalue with "HG") as "[% [% %]]"; eauto.
           iDestruct (proj1 tr_expr_invariant with "HI") as "HB".
-          iDestruct (locally_set with "[HT] HB") as "[HB HC]"; eauto.
+          iDestruct (locally_set with "[HQ] HB") as "[HB HC]"; eauto.
           iDestruct (locally_elim with "HB") as "HB".
           iDestruct (tr_simple_rvalue with "HB") as "[% [% %]]"; eauto. subst.
           iDestruct (proj1 tr_expr_invariant with "HG") as "HA".
@@ -2176,7 +2216,7 @@ Proof.
   rewrite comp_env_preserved. auto.
 Qed.
 
-Lemma red_absorb : forall P tmp, (<absorb> \⌜P⌝ : iProp) () tmp -> P.
+Lemma red_absorb : forall P tmp, (<absorb> ⌜P⌝ : iProp) () tmp -> P.
 Proof.
   intros. apply soundness3 in H. apply (soundness1 tmp).
   iIntros "HA". iDestruct (H with "HA") as ">$".

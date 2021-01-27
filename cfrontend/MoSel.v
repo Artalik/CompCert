@@ -51,10 +51,6 @@ Module SepBasicCore.
         let y := Fresh in
         eapply tac_and_destruct with h _ x y _ _ _;
         [ pm_reflexivity | pm_reduce; iSolveTC | pm_reduce; norm x; norm y]
-      | pure_empty (and ?P ?Q) =>
-        let x := Fresh in
-        iPoseProof (pure_empty_destruct with h) as x; norm x
-      | pure_empty _ => iPure h as ?
       | bi_pure (and ?P ?Q) =>
         let x := Fresh in
         eapply tac_and_destruct with h _ h x _ _ _;
@@ -112,26 +108,26 @@ Module gensym.
 
   Inductive mon (X : Type) : Type :=
   | ret : X -> mon X
-  | Err : Errors.errmsg -> mon X
-  | Gensym : type -> (ident -> mon X) -> mon X.
+  | errorOp : Errors.errmsg -> mon X
+  | gensymOp : type -> (ident -> mon X) -> mon X.
 
-  Arguments Err [X].
-  Arguments Gensym [X].
+  Arguments errorOp [X].
+  Arguments gensymOp [X].
   Arguments ret {_} x.
 
   Fixpoint bind {X Y} (m : mon X) (f : X -> mon Y) : mon Y :=
     match m with
     | ret x => f x
-    | Err e => Err e
-    | Gensym t g => Gensym t (fun x => bind (g x) f)
+    | errorOp e => errorOp e
+    | gensymOp t g => gensymOp t (fun x => bind (g x) f)
     end.
 
   Notation "'let!' x ':=' e1 'in' e2" := (bind e1 (fun x => e2)) (x ident, at level 90).
 
   Notation "'ret!' v" := (ret v) (v ident, at level 90).
 
-  Definition error {X} (e : Errors.errmsg) : mon X := Err e.
-  Definition gensym (t : type) : mon ident := Gensym t ret.
+  Definition error {X} (e : Errors.errmsg) : mon X := errorOp e.
+  Definition gensym (t : type) : mon ident := gensymOp t ret.
 
   Lemma lid : forall X Y (a : X) (f : X -> mon Y), bind (ret a) f = f a.
   Proof. auto. Qed.
@@ -163,8 +159,8 @@ Module gensym.
   Fixpoint run {X} (m : mon X) : state -> res (state * X) :=
     match m with
     | ret v => fun s => OK (s, v)
-    | Err e => fun s => Error e
-    | Gensym t f =>
+    | errorOp e => fun s => Error e
+    | gensymOp t f =>
       fun s =>
         let (i,s') := fresh t s in
         run (f i) s'
@@ -184,8 +180,8 @@ Module weakestpre_gensym.
   Fixpoint wp {X} (e1 : mon X) (Q : X -> iProp) : iProp :=
     match e1 with
     | ret v => Q v
-    | Err e => True
-    | Gensym _ f => ∀ l, IsFresh l -∗ wp (f l) Q
+    | errorOp e => True
+    | gensymOp _ f => ∀ l, IsFresh l -∗ wp (f l) Q
     end.
 
   Notation "'{{' P } } e {{ v ; Q } }" := (P -∗ wp e (fun v => Q))

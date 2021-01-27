@@ -15,7 +15,7 @@ Section hprop.
   Definition eq_list {X} (l1 l2 : list X) := forall x, In x l1 <-> In x l2.
   Notation "l1 ≡ l2" := (eq_list l1 l2).
   Notation "l1 ∪ l2" := (l1 ++ l2).
-  Notation "l1 ##ₘ l2" := (list_disjoint l1 l2).
+  Notation "l1 ## l2" := (list_disjoint l1 l2).
   Notation "∅" := ([]).
 
   Lemma list_eq_comm : forall X (l1 l2 : list X), l1 ≡ l2 -> l2 ≡ l1.
@@ -27,7 +27,7 @@ Section hprop.
     apply H. apply H0. auto.
   Qed.
 
-  Lemma list_disjoint_comm : forall X (l1 l2 : list X), l1 ##ₘ l2 -> l2 ##ₘ l1.
+  Lemma list_disjoint_comm : forall X (l1 l2 : list X), l1 ## l2 -> l2 ## l1.
   Proof. intros X l1 l2 P0 x y P1 P2 eq. eapply P0; eauto. Qed.
 
   Lemma list_eq_union_comm : forall X (l1 l2 l3 : list X), l1 ≡ l2 ∪ l3 -> l1 ≡ l3 ∪ l2.
@@ -36,45 +36,45 @@ Section hprop.
     apply H. eapply in_app_or in H0 as [H0|H0]; apply in_or_app; auto.
   Qed.
 
-  Lemma list_eq_disjoint : forall X (l1 l2 l3 : list X), l1 ≡ l2 -> l2 ##ₘ l3 -> l1 ##ₘ l3.
+  Lemma list_eq_disjoint : forall X (l1 l2 l3 : list X), l1 ≡ l2 -> l2 ## l3 -> l1 ## l3.
   Proof.
     intros X l1 l2 l3 P0 P1 x y P2 P3 eq. eapply P1; eauto. apply P0; auto.
   Qed.
 
-  Lemma list_disjoint_empty_l : forall X (l : list X), ∅ ##ₘ l.
+  Lemma list_disjoint_empty_l : forall X (l : list X), ∅ ## l.
   Proof. intros X l x y P0 P1. inversion P0. Qed.
 
-  Lemma list_disjoint_empty_r : forall X (l : list X), l ##ₘ ∅.
+  Lemma list_disjoint_empty_r : forall X (l : list X), l ## ∅.
   Proof. intros X l x y P0 P1. inversion P1. Qed.
 
-  Lemma list_disjoint_union_l : forall X (l1 l2 l3 : list X), l1 ##ₘ l3 -> l2 ##ₘ l3 -> l1 ∪ l2 ##ₘ l3.
+  Lemma list_disjoint_union_l : forall X (l1 l2 l3 : list X), l1 ## l3 -> l2 ## l3 -> l1 ∪ l2 ## l3.
   Proof.
     intros X l1 l2 l3 P0 P1 x y P2 P3 eq.
     eapply in_app_or in P2 as [P2|P2]. eapply P0; eauto. eapply P1; eauto.
   Qed.
 
-  Lemma list_disjoint_union_r : forall X (l1 l2 l3 : list X), l1 ##ₘ l3 -> l1 ##ₘ l2 -> l1 ##ₘ l3 ∪ l2.
+  Lemma list_disjoint_union_r : forall X (l1 l2 l3 : list X), l1 ## l3 -> l1 ## l2 -> l1 ## l3 ∪ l2.
   Proof.
     intros X l1 l2 l3 P0 P1 x y P2 P3 eq.
     eapply in_app_or in P3 as [P3|P3]. eapply P0; eauto. eapply P1; eauto.
   Qed.
 
-  Lemma list_disjoint_union_l_l : forall X (l1 l2 l3 : list X) , l1 ∪ l2 ##ₘ l3 -> l1 ##ₘ l3.
+  Lemma list_disjoint_union_l_l : forall X (l1 l2 l3 : list X) , l1 ∪ l2 ## l3 -> l1 ## l3.
   Proof.
     intros. intros x y P0 P1. apply H; auto. apply in_or_app. left; auto.
   Qed.
 
-  Lemma list_disjoint_union_l_r : forall X (l1 l2 l3 :list X) , l1 ∪ l2 ##ₘ l3 -> l2 ##ₘ l3.
+  Lemma list_disjoint_union_l_r : forall X (l1 l2 l3 :list X) , l1 ∪ l2 ## l3 -> l2 ## l3.
   Proof.
     intros. intros x y P0 P1. apply H; auto. apply in_or_app. right; auto.
   Qed.
 
-  Lemma list_disjoint_union_r_r : forall X (l1 l2 l3 :list X) , l1 ##ₘ l2 ∪ l3 -> l1 ##ₘ l3.
+  Lemma list_disjoint_union_r_r : forall X (l1 l2 l3 :list X) , l1 ## l2 ∪ l3 -> l1 ## l3.
   Proof.
     intros. intros x y P0 P1. apply H; auto. apply in_or_app. right; auto.
   Qed.
 
-  Lemma list_disjoint_union_r_l : forall X (l1 l2 l3 :list X) , l1 ##ₘ l2 ∪ l3 -> l1 ##ₘ l2.
+  Lemma list_disjoint_union_r_l : forall X (l1 l2 l3 :list X) , l1 ## l2 ∪ l3 -> l1 ## l2.
   Proof.
     intros. intros x y P0 P1. apply H; auto. apply in_or_app. left; auto.
   Qed.
@@ -110,15 +110,12 @@ Section hprop.
   Definition hheap_ctx (ctx : list X) : hprop := fun h => h ≡ ctx.
 
   Definition hstar (H1 H2 : hprop) : hprop :=
-    fun h => exists h1 h2, H1 h1
-                   /\ H2 h2
-                   /\ (h1 ##ₘ h2)
-                   /\ h ≡ h1 ∪ h2.
+    fun h => exists h1 h2, H1 h1 /\ H2 h2 /\ h1 ## h2 /\ h ≡ h1 ∪ h2.
 
   Definition hexists {A} (J : A -> hprop) : hprop :=
     fun h => exists x, J x h.
 
-  Definition hpure (P:Prop) : hprop :=
+  Definition hpure_aff (P:Prop) : hprop :=
     fun h => P /\ hempty h.
 
   Definition htop : hprop :=
@@ -128,12 +125,12 @@ Section hprop.
 
 
   Definition hwand (H1 H2 : hprop) : hprop :=
-    hexists (fun (H:hprop) => (hstar H (hpure ((hstar H H1) ==> H2)))).
+    hexists (fun (H:hprop) => (hstar H (hpure_aff ((hstar H H1) ==> H2)))).
 
   Definition qwand A (Q1 Q2:A->hprop) :=
     hforall (fun x => hwand (Q1 x) (Q2 x)).
 
-  Definition hpure_abs (P : Prop) : hprop := fun h => P.
+  Definition hpure (P : Prop) : hprop := fun h => P.
 
   Lemma hempty_intro : hempty ∅.
   Proof using. reflexivity. Qed.
@@ -145,7 +142,7 @@ Section hprop.
   Local Notation "'\[]'" := (hempty)
                               (at level 0).
 
-  Local Notation "\[ P ]" := (hpure P)
+  Local Notation "\[ P ]" := (hpure_aff P)
                                (at level 0, P at level 99, format "\[ P ]").
 
   Local Notation "H1 '\*' H2" := (hstar H1 H2)
@@ -220,14 +217,14 @@ Section hprop.
   Canonical Structure hpropO := leibnizO hprop.
 
   Program Canonical Structure hpropList : bi :=
-    Bi hprop _ _ pred_incl hempty hpure_abs hand hor
+    Bi hprop _ _ pred_incl hempty hpure hand hor
        pred_impl (@hforall) (@hexists) hstar hwand hpersistent hlater _ _ _ _.
   Next Obligation.
     repeat split; try(solve_proper); eauto with list_scope.
     - intros H h P. assumption.
     - rewrite /Transitive. intros. intros h P. eauto.
     - rewrite leibniz_equiv_iff. intros (P0&P1). extens. split; intro; auto.
-    - intros n P0 P1 equiv. extens. unfold hpure_abs. auto.
+    - intros n P0 P1 equiv. extens. unfold hpure. auto.
     - intros A n P0 P1 equiv. unfold hforall. eapply functional_extensionality in equiv.
       subst. auto.
     - intros A n P0 P1 equiv. unfold hexists. eapply functional_extensionality in equiv.
@@ -315,20 +312,7 @@ Section hprop.
     intros. inv H. apply in_app_iff in H1 as [H1|H1]; auto.
   Qed.
 
-  Definition pure_empty (P : Prop) : monPred biInd hpropList := <affine> ⌜P⌝.
-
-  Local Notation "\⌜ P ⌝" := (pure_empty P)
-                               (at level 0, P at level 99, format "\⌜ P ⌝").
-
-  Global Instance affine_pure (P : Prop) : Affine (pure_empty P).
-  Proof.
-    red. iIntros "HA". trivial.
-  Qed.
-
   Lemma emp_trivial : ⊢ (emp : monPred biInd hpropList). Proof. simpl. auto. Qed.
-
-  Lemma pure_empty_destruct : forall P Q, ⊢ \⌜ P /\ Q ⌝ -∗ \⌜ P ⌝ ∗ \⌜ Q ⌝ .
-  Proof. iIntros (P Q H). destruct H. iSplit; iPureIntro; auto. Qed.
 
   Lemma eq_list_nil : forall X (h : list X), eq_list h [] -> h = [].
   Proof.
@@ -383,7 +367,7 @@ Section hprop.
     intro. apply in_app_iff in H2 as [H2|H2]. auto. inv H2.
   Qed.
 
-  Lemma heap_ctx_split (h h' : list X) : h ##ₘ h' -> (⊢heap_ctx (h \u h') -∗ heap_ctx h ∗ heap_ctx h').
+  Lemma heap_ctx_split (h h' : list X) : h ## h' -> (⊢heap_ctx (h \u h') -∗ heap_ctx h ∗ heap_ctx h').
   Proof.
     MonPred.unseal. split. MonPred.unseal. repeat red. intros. destruct a. destruct i. clear H1.
     inv H0. exists emp, ∅, ∅. repeat split; eauto with list_scope. intros l P0.
@@ -400,7 +384,7 @@ Notation "'heap_empty'" := (∅).
 
 Notation "'\[]'" := (hempty) (at level 0).
 
-Notation "\[ P ]" := (hpure P) (at level 0, P at level 99, format "\[ P ]").
+Notation "\[ P ]" := (hpure_aff P) (at level 0, P at level 99, format "\[ P ]").
 
 Notation "H1 '\*' H2" := (hstar H1 H2) (at level 41, right associativity).
 
@@ -423,6 +407,3 @@ Ltac inversion_star h P :=
 Open Scope bi_scope.
 
 Definition IsFresh {type} l : monPred biInd (@hpropList type) := single l.
-
-Notation "\⌜ P ⌝" := (pure_empty P)
-                       (at level 0, P at level 99, format "\⌜ P ⌝").

@@ -54,29 +54,30 @@ Section SPEC.
   Definition tr_rvalof (ty : type) (e1 : expr) (ls : list statement) (e : expr) : iProp :=
     if type_is_volatile ty
     then
-      (∃ t, \⌜ ls = make_set t e1 :: nil /\ e = Etempvar t ty⌝ ∗ IsFresh t)%I
+      (∃ t, ⌜ ls = make_set t e1 :: nil /\ e = Etempvar t ty⌝ ∗ IsFresh t)%I
     else
-      \⌜ls =nil /\ e = e1⌝%I.
+      ⌜ls =nil /\ e = e1⌝%I.
 
   Fixpoint tr_expr (le : temp_env) (dst : destination) (e : Csyntax.expr)
            (sl : list statement ) (a : expr) : iProp :=
     (<absorb>
      match e with
      | Csyntax.Evar id ty =>
-       dest_below dst ∗ \⌜ sl = final dst (Evar id ty) /\  a = Evar id ty ⌝
+       dest_below dst ∗ ⌜ sl = final dst (Evar id ty) /\  a = Evar id ty ⌝
      | Csyntax.Ederef e1 ty =>
        dest_below dst ∗
-                  ∃ sl2 a2, tr_expr le For_val e1 sl2 a2 ∗
-                  \⌜sl = sl2 ++ final dst (Ederef' a2 ty) /\ a = Ederef' a2 ty⌝
+       ∃ sl2 a2, tr_expr le For_val e1 sl2 a2 ∗
+       ⌜sl = sl2 ++ final dst (Ederef' a2 ty) /\ a = Ederef' a2 ty⌝
      | Csyntax.Efield e1 f ty =>
-       dest_below dst ∗ ∃ sl2 a2, tr_expr le For_val e1 sl2 a2 ∗
-                       \⌜ sl = sl2 ++ final dst (Efield a2 f ty) /\ a = Efield a2 f ty ⌝
+       dest_below dst ∗
+       ∃ sl2 a2, tr_expr le For_val e1 sl2 a2 ∗
+       ⌜ sl = sl2 ++ final dst (Efield a2 f ty) /\ a = Efield a2 f ty ⌝
      | Csyntax.Eval v ty =>
        match dst with
-       | For_effects => \⌜sl = nil⌝
+       | For_effects => ⌜sl = nil⌝
        | For_val =>
          (∀ tge e m, locally le (fun le' => ⌜eval_expr tge e le' m a v⌝))
-           ∗ \⌜ typeof a = ty /\ sl = nil ⌝
+           ∗ ⌜ typeof a = ty /\ sl = nil ⌝
        | For_set sd =>
          (<absorb> dest_below dst) ∧
          ∃ a,
@@ -85,50 +86,50 @@ Section SPEC.
 
        end
      | Csyntax.Esizeof ty' ty =>
-       dest_below dst ∗ \⌜ sl = final dst (Esizeof ty' ty) /\ a = Esizeof ty' ty⌝
+       dest_below dst ∗ ⌜ sl = final dst (Esizeof ty' ty) /\ a = Esizeof ty' ty⌝
      | Csyntax.Ealignof ty' ty =>
-       dest_below dst ∗ \⌜ sl = final dst (Ealignof ty' ty) /\ a = Ealignof ty' ty ⌝
+       dest_below dst ∗ ⌜ sl = final dst (Ealignof ty' ty) /\ a = Ealignof ty' ty ⌝
      | Csyntax.Evalof e1 ty =>
        dest_below dst ∗
        ∃ sl2 a2 sl3,
         tr_expr le For_val e1 sl2 a2  ∗
         tr_rvalof (Csyntax.typeof e1) a2 sl3 a  ∗
-        \⌜ sl = (sl2 ++ sl3 ++ final dst a) ⌝
+        ⌜ sl = (sl2 ++ sl3 ++ final dst a) ⌝
      | Csyntax.Eaddrof e1 ty =>
        dest_below dst ∗
        ∃ sl2 a2, tr_expr le For_val e1 sl2 a2  ∗
-       \⌜ sl = sl2 ++ final dst (Eaddrof' a2 ty) /\ a = Eaddrof' a2 ty ⌝
+       ⌜ sl = sl2 ++ final dst (Eaddrof' a2 ty) /\ a = Eaddrof' a2 ty ⌝
      | Csyntax.Eunop ope e1 ty =>
        dest_below dst ∗
        ∃ sl2 a2, tr_expr le For_val e1 sl2 a2  ∗
-       \⌜ sl = sl2 ++ final dst (Eunop ope a2 ty) /\ a = Eunop ope a2 ty ⌝
+       ⌜ sl = sl2 ++ final dst (Eunop ope a2 ty) /\ a = Eunop ope a2 ty ⌝
      | Csyntax.Ebinop ope e1 e2 ty =>
        dest_below dst ∗
        ∃ sl2 a2 sl3 a3, tr_expr le For_val e1 sl2 a2  ∗
        tr_expr le For_val e2 sl3 a3  ∗
-       \⌜ sl = sl2 ++ sl3 ++ final dst (Ebinop ope a2 a3 ty) /\ a = Ebinop ope a2 a3 ty ⌝
+       ⌜ sl = sl2 ++ sl3 ++ final dst (Ebinop ope a2 a3 ty) /\ a = Ebinop ope a2 a3 ty ⌝
      | Csyntax.Ecast e1 ty =>
        dest_below dst ∗
        ∃ sl2 a2, tr_expr le For_val e1 sl2 a2  ∗
-       \⌜ sl = sl2 ++ final dst (Ecast a2 ty) /\ a = Ecast a2 ty ⌝
+       ⌜ sl = sl2 ++ final dst (Ecast a2 ty) /\ a = Ecast a2 ty ⌝
      | Csyntax.Eseqand e1 e2 ty =>
        match dst with
        | For_val =>
          ∃ sl2 a2 sl3 a3 t,
          tr_expr le For_val e1 sl2 a2 ∗
          tr_expr le (For_set (sd_seqbool_val t ty)) e2 sl3 a3 ∗
-         \⌜ sl = sl2 ++ makeif a2 (makeseq sl3) (Sset t (Econst_int Int.zero ty)) :: nil /\
+         ⌜ sl = sl2 ++ makeif a2 (makeseq sl3) (Sset t (Econst_int Int.zero ty)) :: nil /\
          a = Etempvar t ty ⌝
     | For_effects =>
       ∃ sl2 a2 sl3 a3,
        tr_expr le For_val e1 sl2 a2 ∗
        tr_expr le For_effects e2 sl3 a3  ∗
-       \⌜  sl = sl2 ++ makeif a2 (makeseq sl3) Sskip :: nil ⌝
+       ⌜  sl = sl2 ++ makeif a2 (makeseq sl3) Sskip :: nil ⌝
     | For_set sd =>
       ∃ sl2 a2 sl3 a3,
        tr_expr le For_val e1 sl2 a2 ∗
        tr_expr le (For_set (sd_seqbool_set ty sd)) e2 sl3 a3 ∗
-       \⌜ sl = sl2 ++ makeif a2 (makeseq sl3) (makeseq (do_set sd (Econst_int Int.zero ty))) :: nil ⌝
+       ⌜ sl = sl2 ++ makeif a2 (makeseq sl3) (makeseq (do_set sd (Econst_int Int.zero ty))) :: nil ⌝
      end
     | Csyntax.Eseqor e1 e2 ty =>
       match dst with
@@ -136,18 +137,18 @@ Section SPEC.
         ∃ sl2 a2 sl3 a3 t,
        tr_expr le For_val e1 sl2 a2  ∗
        tr_expr le (For_set (sd_seqbool_val t ty)) e2 sl3 a3 ∗
-       \⌜ sl = sl2 ++ makeif a2 (Sset t (Econst_int Int.one ty)) (makeseq sl3) :: nil /\
+       ⌜ sl = sl2 ++ makeif a2 (Sset t (Econst_int Int.one ty)) (makeseq sl3) :: nil /\
        a = Etempvar t ty ⌝
     | For_effects =>
       ∃ sl2 a2 sl3 a3,
        tr_expr le For_val e1 sl2 a2  ∗
        tr_expr le For_effects e2 sl3 a3  ∗
-       \⌜ sl = sl2 ++ makeif a2 Sskip (makeseq sl3) :: nil ⌝
+       ⌜ sl = sl2 ++ makeif a2 Sskip (makeseq sl3) :: nil ⌝
     | For_set sd =>
       ∃ sl2 a2 sl3 a3,
        tr_expr le For_val e1 sl2 a2 ∗
        tr_expr le (For_set (sd_seqbool_set ty sd)) e2 sl3 a3 ∗
-       \⌜ sl = sl2 ++ makeif a2 (makeseq (do_set sd (Econst_int Int.one ty))) (makeseq sl3) :: nil ⌝
+       ⌜ sl = sl2 ++ makeif a2 (makeseq (do_set sd (Econst_int Int.one ty))) (makeseq sl3) :: nil ⌝
      end
 
     | Csyntax.Econdition e1 e2 e3 ty =>
@@ -157,20 +158,20 @@ Section SPEC.
        tr_expr le For_val e1 sl2 a2 ∗
        (tr_expr le (For_set (SDbase ty ty t)) e2 sl3 a3 ∧
        tr_expr le (For_set (SDbase ty ty t)) e3 sl4 a4) ∗
-       \⌜ sl = sl2 ++ makeif a2 (makeseq sl3) (makeseq sl4) :: nil /\ a = Etempvar t ty⌝
+       ⌜ sl = sl2 ++ makeif a2 (makeseq sl3) (makeseq sl4) :: nil /\ a = Etempvar t ty⌝
     | For_effects =>
       ∃ sl2 a2 sl3 a3 sl4 a4,
        tr_expr le For_val e1 sl2 a2  ∗
        tr_expr le For_effects e2 sl3 a3 ∗
        tr_expr le For_effects e3 sl4 a4 ∗
-       \⌜ sl = sl2 ++ makeif a2 (makeseq sl3) (makeseq sl4) :: nil ⌝
+       ⌜ sl = sl2 ++ makeif a2 (makeseq sl3) (makeseq sl4) :: nil ⌝
     | For_set sd =>
       dest_below dst ∗
       ∃ sl2 a2 sl3 a3 sl4 a4 t,
       tr_expr le For_val e1 sl2 a2  ∗
       (tr_expr le (For_set (SDcons ty ty t sd)) e2 sl3 a3 ∧
       tr_expr le (For_set (SDcons ty ty t sd)) e3 sl4 a4) ∗
-      \⌜ sl = sl2 ++ makeif a2 (makeseq sl3) (makeseq sl4) :: nil ⌝
+      ⌜ sl = sl2 ++ makeif a2 (makeseq sl3) (makeseq sl4) :: nil ⌝
      end
     | Csyntax.Eassign e1 e2 ty =>
       match dst with
@@ -178,13 +179,13 @@ Section SPEC.
         ∃ sl2 a2 sl3 a3,
        tr_expr le For_val e1 sl2 a2  ∗
        tr_expr le For_val e2 sl3 a3  ∗
-       \⌜ sl = sl2 ++ sl3 ++ make_assign a2 a3 :: nil ⌝
+       ⌜ sl = sl2 ++ sl3 ++ make_assign a2 a3 :: nil ⌝
     | _ =>
       ∃ sl2 a2 sl3 a3 t,
        tr_expr le For_val e1 sl2 a2  ∗
        tr_expr le For_val e2 sl3 a3  ∗
        IsFresh t ∗ dest_below dst ∗
-       \⌜ sl = sl2 ++ sl3 ++ Sset t (Ecast a3 (Csyntax.typeof e1)) :: make_assign a2 (Etempvar t (Csyntax.typeof e1)) :: final dst (Etempvar t (Csyntax.typeof e1)) /\ a = Etempvar t (Csyntax.typeof e1)⌝
+       ⌜ sl = sl2 ++ sl3 ++ Sset t (Ecast a3 (Csyntax.typeof e1)) :: make_assign a2 (Etempvar t (Csyntax.typeof e1)) :: final dst (Etempvar t (Csyntax.typeof e1)) /\ a = Etempvar t (Csyntax.typeof e1)⌝
      end
     | Csyntax.Eassignop ope e1 e2 tyres ty =>
       match dst with
@@ -193,14 +194,14 @@ Section SPEC.
        tr_expr le For_val e1 sl2 a2  ∗
        tr_expr le For_val e2 sl3 a3  ∗
        tr_rvalof (Csyntax.typeof e1) a2 sl4 a4  ∗
-       \⌜sl = sl2 ++ sl3 ++ sl4 ++ make_assign a2 (Ebinop ope a4 a3 tyres) :: nil ⌝
+       ⌜sl = sl2 ++ sl3 ++ sl4 ++ make_assign a2 (Ebinop ope a4 a3 tyres) :: nil ⌝
     | _ =>
       dest_below dst ∗ ∃ sl2 a2 sl3 a3 sl4 a4 t,
        tr_expr le For_val e1 sl2 a2  ∗
        tr_expr le For_val e2 sl3 a3  ∗
        tr_rvalof (Csyntax.typeof e1) a2 sl4 a4  ∗
        IsFresh t ∗
-       \⌜ sl = sl2 ++ sl3 ++ sl4 ++ Sset t (Ecast (Ebinop ope a4 a3 tyres) (Csyntax.typeof e1)) :: make_assign a2 (Etempvar t (Csyntax.typeof e1)) :: final dst (Etempvar t (Csyntax.typeof e1))
+       ⌜ sl = sl2 ++ sl3 ++ sl4 ++ Sset t (Ecast (Ebinop ope a4 a3 tyres) (Csyntax.typeof e1)) :: make_assign a2 (Etempvar t (Csyntax.typeof e1)) :: final dst (Etempvar t (Csyntax.typeof e1))
        /\ a = Etempvar t (Csyntax.typeof e1) ⌝
      end
     | Csyntax.Epostincr id e1 ty =>
@@ -210,17 +211,19 @@ Section SPEC.
        | For_effects =>
          ∃ sl3 a3,
        tr_rvalof (Csyntax.typeof e1) a2 sl3 a3  ∗
-       \⌜ sl = sl2 ++ sl3 ++ make_assign a2 (transl_incrdecr id a3 (Csyntax.typeof e1)) :: nil ⌝
+       ⌜ sl = sl2 ++ sl3 ++ make_assign a2 (transl_incrdecr id a3 (Csyntax.typeof e1)) :: nil ⌝
     | _ =>
-      dest_below dst ∗ ∃ t, IsFresh t  ∗
-            \⌜ sl = sl2 ++ make_set t a2 ::make_assign a2 (transl_incrdecr id (Etempvar t (Csyntax.typeof e1)) (Csyntax.typeof e1)) :: final dst (Etempvar t (Csyntax.typeof e1)) /\ a = Etempvar t (Csyntax.typeof e1)⌝
+      dest_below dst ∗
+      ∃ t, IsFresh t  ∗
+      ⌜ sl = sl2 ++ make_set t a2 ::make_assign a2 (transl_incrdecr id (Etempvar t (Csyntax.typeof e1)) (Csyntax.typeof e1)) :: final dst (Etempvar t (Csyntax.typeof e1))
+           /\ a = Etempvar t (Csyntax.typeof e1)⌝
      end
 
     | Csyntax.Ecomma e1 e2 ty =>
       ∃ sl2 a2 sl3,
        tr_expr le For_effects e1 sl2 a2  ∗
        tr_expr le dst e2 sl3 a ∗
-       \⌜ sl = sl2 ++ sl3 ⌝
+       ⌜ sl = sl2 ++ sl3 ⌝
 
     | Csyntax.Ecall e1 el2 ty =>
       match dst with
@@ -228,13 +231,13 @@ Section SPEC.
         ∃ sl2 a2 sl3 al3,
        tr_expr le For_val e1 sl2 a2  ∗
        tr_exprlist le el2 sl3 al3  ∗
-       \⌜  sl = sl2 ++ sl3 ++ Scall None a2 al3 :: nil ⌝
+       ⌜  sl = sl2 ++ sl3 ++ Scall None a2 al3 :: nil ⌝
     | _ =>
       dest_below dst ∗ ∃ sl2 a2 sl3 al3 t,
        IsFresh t ∗
         tr_expr le For_val e1 sl2 a2  ∗
         tr_exprlist le el2 sl3 al3  ∗
-        \⌜ sl = sl2 ++ sl3 ++ Scall (Some t) a2 al3 :: final dst (Etempvar t ty) /\
+        ⌜ sl = sl2 ++ sl3 ++ Scall (Some t) a2 al3 :: final dst (Etempvar t ty) /\
        a = Etempvar t ty⌝
      end
 
@@ -243,18 +246,18 @@ Section SPEC.
       | For_effects =>
         ∃ sl2 al2,
        tr_exprlist le el sl2 al2 ∗
-       \⌜ sl = sl2 ++ Sbuiltin None ef tyargs al2 :: nil ⌝
+       ⌜ sl = sl2 ++ Sbuiltin None ef tyargs al2 :: nil ⌝
     | _ =>
       dest_below dst ∗ ∃ sl2 al2 t,
        tr_exprlist le el sl2 al2  ∗
        IsFresh t  ∗
-       \⌜ sl = sl2 ++ Sbuiltin (Some t) ef tyargs al2 :: final dst (Etempvar t ty) /\
+       ⌜ sl = sl2 ++ Sbuiltin (Some t) ef tyargs al2 :: final dst (Etempvar t ty) /\
        a = Etempvar t ty⌝
      end
     | Csyntax.Eparen e1 tycast ty =>
       match dst with
       | For_val =>
-        ∃ a2 t, tr_expr le (For_set (SDbase tycast ty t)) e1 sl a2 ∗ \⌜ a = Etempvar t ty ⌝
+        ∃ a2 t, tr_expr le (For_set (SDbase tycast ty t)) e1 sl a2 ∗ ⌜ a = Etempvar t ty ⌝
     | For_effects =>
       ∃ a2, tr_expr le For_effects e1 sl a2
     | For_set sd =>
@@ -269,12 +272,12 @@ Section SPEC.
   end)
   with tr_exprlist (le : temp_env) (e : Csyntax.exprlist) (sl : list statement) (a : list expr) : iProp :=
          match e with
-         | Csyntax.Enil => \⌜ sl = nil /\ a = nil⌝
+         | Csyntax.Enil => ⌜ sl = nil /\ a = nil⌝
          | Csyntax.Econs e1 el2 =>
            ∃ sl2 a2 sl3 al3,
     tr_expr le For_val e1 sl2 a2  ∗
     tr_exprlist le el2 sl3 al3  ∗
-    \⌜ sl = sl2 ++ sl3 /\ a = a2 :: al3⌝
+    ⌜ sl = sl2 ++ sl3 /\ a = a2 :: al3⌝
   end.
 
 
