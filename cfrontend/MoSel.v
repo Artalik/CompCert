@@ -309,7 +309,7 @@ Module adequacy.
   Proof.
     fix e 1.
     destruct e0; intros.
-    - inversion H0; subst. apply soundness2. iApply H.
+    - inversion H0; subst. apply soundness. iApply H.
     - inversion H0.
     - simpl in *. eapply e.
       2 : apply H0.
@@ -347,7 +347,7 @@ Module adequacy.
       run e s = Errors.OK (s', v) ->
       Q v.
   Proof.
-    intros. apply (soundness1 (inject (next s'))). iApply soundness3.
+    intros. apply (soundness_pure (inject (next s'))). iApply completeness.
     eapply (adequacy _ _ _ _ _ H H0).
   Qed.
 

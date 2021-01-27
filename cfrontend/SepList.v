@@ -336,14 +336,14 @@ Section hprop.
     eapply H. destruct i. eapply H0.
   Qed.
 
-  Lemma soundness1 h (Φ : Prop) : (heap_ctx h ⊢ (⌜ Φ ⌝) : monPred biInd hpropList) -> Φ.
+  Lemma soundness_pure h (Φ : Prop) : (heap_ctx h ⊢ (⌜ Φ ⌝) : monPred biInd hpropList) -> Φ.
   Proof.
     MonPred.unseal=> -[H]. repeat red in H.
     pose (e := H () h). eapply e. clear H e Φ. repeat red.
     intros. split; auto.
   Qed.
 
-  Lemma soundness2 (Φ : monPred biInd hpropList) h : (⊢heap_ctx h -∗ Φ) -> Φ () h.
+  Lemma soundness (Φ : monPred biInd hpropList) h : (⊢heap_ctx h -∗ Φ) -> Φ () h.
   Proof.
     MonPred.unseal=> -[H]. repeat red in H.
     pose (e := H () ∅).
@@ -356,15 +356,22 @@ Section hprop.
       apply P in H2. apply in_app_iff in H2 as [H2|H2]; auto. inv H2.
   Qed.
 
-  Lemma soundness3 (Φ : monPred biInd hpropList) h : Φ () h -> (⊢heap_ctx h -∗ Φ).
+  Lemma completeness (Φ : monPred biInd hpropList) h : Φ () h -> (⊢heap_ctx h -∗ Φ).
   Proof.
     MonPred.unseal. split. MonPred.unseal. intros. repeat red. intros.
     exists emp. exists x; exists heap_empty. repeat split; auto with list_scope.
     inv H0. destruct i,a. clear H1. intros h0 P0. inversion_star h P. clear P0.
     inv P1. red in P2. subst. eapply prop_eq; eauto. split; intro. apply P.
     apply in_app_iff. right; auto. apply P2; auto. apply P2. apply P in H0.
-    apply in_app_iff in H0 as [H0|H0]. inv H0. auto. intro. apply in_app_iff. left; auto.
-    intro. apply in_app_iff in H2 as [H2|H2]. auto. inv H2.
+    apply in_app_iff in H0 as [H0|H0]. inv H0. auto. intro. apply in_app_iff.
+    left; auto. intro. apply in_app_iff in H2 as [H2|H2]. auto. inv H2.
+  Qed.
+
+  Lemma equivalence (Φ : monPred biInd hpropList) h : Φ () h <-> (⊢heap_ctx h -∗ Φ).
+  Proof.
+    split.
+    apply completeness.
+    apply soundness.
   Qed.
 
   Lemma heap_ctx_split (h h' : list X) : h ## h' -> (⊢heap_ctx (h \u h') -∗ heap_ctx h ∗ heap_ctx h').

@@ -429,7 +429,7 @@ Section SPEC.
 (** Translation of statements *)
   Lemma start_proof (P Q : iProp) tmps : P () tmps -> (⊢ P -∗ Q) -> Q () tmps.
   Proof.
-    intros. apply soundness3 in H. apply soundness2. iIntros. iApply H0. iApply H. auto.
+    intros. apply completeness in H. apply soundness. iIntros. iApply H0. iApply H. auto.
   Qed.
 
   Lemma transl_expr_meets_spec:
