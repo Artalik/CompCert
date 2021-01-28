@@ -101,10 +101,11 @@ Module gensym.
 
   Definition ident := positive.
 
-  Record state := mk_state { trail: list (ident * type);
-                             next : ident }.
+  Record generator : Type := mkgenerator { gen_next : ident;
+                                           gen_trail: list (ident * type)
+                                         }.
 
-  Definition initial_state : state := mk_state nil 1%positive.
+  Definition initial_state : generator := mkgenerator 1%positive nil.
 
   Inductive mon (X : Type) : Type :=
   | ret : X -> mon X
@@ -151,12 +152,12 @@ Module gensym.
     * simpl. do 2 f_equal. apply functional_extensionality. intro. apply m.
   Qed.
 
-  Definition fresh (ty : type) (s: state) : ident * state :=
-    let h := trail s in
-    let n := next s in
-    (n, mk_state ((n,ty) :: h) (Pos.succ n)).
+  Definition fresh (ty : type) (s: generator) : ident * generator :=
+    let h := gen_trail s in
+    let n := gen_next s in
+    (n, mkgenerator  (Pos.succ n) ((n,ty) :: h)).
 
-  Fixpoint run {X} (m : mon X) : state -> res (state * X) :=
+  Fixpoint run {X} (m : mon X) : generator -> res (generator * X) :=
     match m with
     | ret v => fun s => OK (s, v)
     | errorOp e => fun s => Error e
@@ -302,10 +303,10 @@ Module adequacy.
     - inversion H.
   Qed.
 
-  Lemma adequacy {X} : forall (e : mon X) (Q : X -> iProp) (s s' : state) v,
-      (heap_ctx (inject (next s)) ⊢ wp e Q) ->
+  Lemma adequacy_wp {X} : forall (e : mon X) (Q : X -> iProp) (s s' : generator) v,
+      (heap_ctx (inject (gen_next s)) ⊢ wp e Q) ->
       run e s = Errors.OK (s', v) ->
-      (Q v) () (inject (next s')).
+      (Q v) () (inject (gen_next s')).
   Proof.
     fix e 1.
     destruct e0; intros.
@@ -319,40 +320,40 @@ Module adequacy.
         iApply ("HA" with "HB").
   Qed.
 
-  Lemma adequacy_init {X} : forall (e : mon X) (Q : X -> iProp) (s' : state) v ,
+  Lemma adequacy_init {X} : forall (e : mon X) (Q : X -> iProp) s' v,
       (⊢ wp e Q) ->
       run e initial_state = Errors.OK (s', v) ->
-      (Q v) () (inject (next s')).
-  Proof. intros. eapply adequacy; eauto. auto. Qed.
+      (Q v) () (inject (gen_next s')).
+  Proof. intros. eapply adequacy_wp; eauto. auto. Qed.
 
-  Lemma adequacy_triple {X} : forall (e : mon X) (Q : X -> iProp) s v s' H,
-      (heap_ctx (inject (next s)) ⊢ H) -> (⊢ {{ H }} e {{ v; Q v }}) ->
+  Lemma adequacy {X} : forall (e : mon X) (Q : X -> iProp) s v s' H,
+      (heap_ctx (inject (gen_next s)) ⊢ H) -> (⊢ {{ H }} e {{ v; Q v }}) ->
       run e s = Errors.OK (s', v) ->
-      (Q v) () (inject (next s')).
+      (Q v) () (inject (gen_next s')).
   Proof.
-    intros. eapply adequacy; eauto. iIntros "HA". iDestruct (H0 with "HA") as "HA".
+    intros. eapply adequacy_wp; eauto. iIntros "HA". iDestruct (H0 with "HA") as "HA".
     iApply (H1 with "HA"); auto.
   Qed.
 
   Lemma adequacy_triple_init {X} : forall (e : mon X) (Q : X -> iProp) v s' H,
       (⊢ H) -> (⊢ {{ H }} e {{ v; Q v }}) ->
       run e initial_state = Errors.OK (s', v) ->
-      (Q v) () (inject (next s')).
+      (Q v) () (inject (gen_next s')).
   Proof.
     intros. eapply adequacy_init; eauto. iApply H1; eauto.
   Qed.
 
   Lemma adequacy_wp_pure {X} : forall (e : mon X) (Q : X -> Prop) s v s',
-      (heap_ctx (inject (next s)) ⊢ wp e (fun v =>  ⌜Q v⌝)) ->
+      (heap_ctx (inject (gen_next s)) ⊢ wp e (fun v =>  ⌜Q v⌝)) ->
       run e s = Errors.OK (s', v) ->
       Q v.
   Proof.
-    intros. apply (soundness_pure (inject (next s'))). iApply completeness.
-    eapply (adequacy _ _ _ _ _ H H0).
+    intros. apply (soundness_pure (inject (gen_next s'))). iApply completeness.
+    eapply (adequacy_wp _ _ _ _ _ H H0).
   Qed.
 
   Lemma adequacy_pure {X} : forall (e : mon X) (Q : X -> Prop) s v s' H,
-      (heap_ctx (inject (next s)) ⊢ H) -> (⊢ {{ H }} e {{ v; ⌜ Q v ⌝}}) ->
+      (heap_ctx (inject (gen_next s)) ⊢ H) -> (⊢ {{ H }} e {{ v; ⌜ Q v ⌝}}) ->
       run e s = Errors.OK (s', v) ->
       Q v.
   Proof.

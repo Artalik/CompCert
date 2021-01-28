@@ -639,7 +639,7 @@ with tr_lblstmts: Csyntax.labeled_statements -> labeled_statements -> Prop :=
     destruct (run (transl_stmt (Csyntax.fn_body f)) initial_state) eqn:?; inversion H.
     destruct p. simpl in *.
     apply tr_function_intro; auto; simpl.
-    eapply (adequacy_pure_init (transl_stmt (Csyntax.fn_body f)) _ s0 s emp); auto.
+    eapply (adequacy_pure_init (transl_stmt (Csyntax.fn_body f)) _  s g emp); auto.
     iApply (transl_stmt_meets_spec (Csyntax.fn_body f)).
   Qed.
 

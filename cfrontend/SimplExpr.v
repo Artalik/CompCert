@@ -473,7 +473,7 @@ Definition transl_function (f: Csyntax.function) : res function :=
               f.(Csyntax.fn_callconv)
               f.(Csyntax.fn_params)
               f.(Csyntax.fn_vars)
-              (trail (fst tbody))
+              (gen_trail (fst tbody))
               (snd tbody))
   end.
 
