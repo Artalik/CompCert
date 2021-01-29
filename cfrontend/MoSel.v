@@ -100,36 +100,36 @@ Module gensym.
   Export SepList.
 
   Definition ident := positive.
-
+  (* =generator= *)
   Record generator : Type := mkgenerator { gen_next : ident;
                                            gen_trail: list (ident * type)
                                          }.
-
+  (* =end= *)
   Definition initial_state : generator := mkgenerator 1%positive nil.
-
+  (* =mon= *)
   Inductive mon (X : Type) : Type :=
   | ret : X -> mon X
   | errorOp : Errors.errmsg -> mon X
   | gensymOp : type -> (ident -> mon X) -> mon X.
-
+  (* =end= *)
   Arguments errorOp [X].
   Arguments gensymOp [X].
   Arguments ret {_} x.
-
+  (* =bind= *)
   Fixpoint bind {X Y} (m : mon X) (f : X -> mon Y) : mon Y :=
     match m with
     | ret x => f x
     | errorOp e => errorOp e
     | gensymOp t g => gensymOp t (fun x => bind (g x) f)
     end.
-
+  (* =end= *)
   Notation "'let!' x ':=' e1 'in' e2" := (bind e1 (fun x => e2)) (x ident, at level 90).
 
   Notation "'ret!' v" := (ret v) (v ident, at level 90).
-
+  (* =operators= *)
   Definition error {X} (e : Errors.errmsg) : mon X := errorOp e.
   Definition gensym (t : type) : mon ident := gensymOp t ret.
-
+  (* =end= *)
   Lemma lid : forall X Y (a : X) (f : X -> mon Y), bind (ret a) f = f a.
   Proof. auto. Qed.
 
@@ -151,7 +151,7 @@ Module gensym.
     * reflexivity.
     * simpl. do 2 f_equal. apply functional_extensionality. intro. apply m.
   Qed.
-
+  (* =run= *)
   Definition fresh (ty : type) (s: generator) : ident * generator :=
     let h := gen_trail s in
     let n := gen_next s in
@@ -166,7 +166,7 @@ Module gensym.
         let (i,s') := fresh t s in
         run (f i) s'
     end.
-
+  (* =end= *)
 End gensym.
 
 
@@ -177,14 +177,14 @@ Module weakestpre_gensym.
   Import reduction.
 
   Definition iProp := monPred biInd (@hpropList ident).
-
+  (* =wp= *)
   Fixpoint wp {X} (e1 : mon X) (Q : X -> iProp) : iProp :=
     match e1 with
     | ret v => Q v
     | errorOp e => True
     | gensymOp _ f => ∀ l, IsFresh l -∗ wp (f l) Q
     end.
-
+  (* =end= *)
   Notation "'{{' P } } e {{ v ; Q } }" := (P -∗ wp e (fun v => Q))
                                             (at level 20,
                                              format "'[hv' {{  P  } }  '/  ' e  '/'  {{  v ;  Q  } } ']'").
@@ -268,12 +268,14 @@ Qed.
 Ltac Frame := eapply intro_true_r; eapply frame.
 
 (** Effects rules *)
-Lemma gensym_spec t :
-  ⊢{{ emp }} gensym t {{ l; IsFresh l }}.
+(* =gensym_spec= *)
+Lemma gensym_spec t : ⊢{{ emp }} gensym t {{ l; IsFresh l }}.
+(* =end= *)
 Proof. simpl; auto. Qed.
 
-Lemma error_spec {X} (Q : X -> iProp) e :
-  ⊢{{ True }} error e {{ v; Q v }}.
+(* =error_spec= *)
+Lemma error_spec {X} (Q : X -> iProp) e : ⊢{{ True }} error e {{ v; Q v }}.
+(* =end= *)
 Proof. auto. Qed.
 
 End weakestpre_gensym.
@@ -326,10 +328,12 @@ Module adequacy.
       (Q v) () (inject (gen_next s')).
   Proof. intros. eapply adequacy_wp; eauto. auto. Qed.
 
+  (* =aedquacy= *)
   Lemma adequacy {X} : forall (e : mon X) (Q : X -> iProp) s v s' H,
       (heap_ctx (inject (gen_next s)) ⊢ H) -> (⊢ {{ H }} e {{ v; Q v }}) ->
       run e s = Errors.OK (s', v) ->
       (Q v) () (inject (gen_next s')).
+  (* =end= *)
   Proof.
     intros. eapply adequacy_wp; eauto. iIntros "HA". iDestruct (H0 with "HA") as "HA".
     iApply (H1 with "HA"); auto.

@@ -160,10 +160,12 @@ Inductive set_destination : Type :=
   | SDbase (tycast ty: type) (tmp: ident)
   | SDcons (tycast ty: type) (tmp: ident) (sd: set_destination).
 
+(* =destination= *)
 Inductive destination : Type :=
   | For_val
   | For_effects
   | For_set (sd: set_destination).
+(* =end= *)
 
 Definition dummy_expr := Econst_int Int.zero type_int32s.
 
@@ -187,7 +189,9 @@ Definition sd_seqbool_val (tmp: ident) (ty: type) :=
 Definition sd_seqbool_set (ty: type) (sd: set_destination) :=
   let tmp :=  sd_temp sd in SDcons type_bool ty tmp sd.
 
+(* =transl_expr= *)
 Fixpoint transl_expr (dst: destination) (a: Csyntax.expr) : mon (list statement * expr) :=
+  (* =end= *)
   match a with
   | Csyntax.Eloc b ofs ty =>
       error (msg "SimplExpr.transl_expr: Eloc")
@@ -287,6 +291,7 @@ Fixpoint transl_expr (dst: destination) (a: Csyntax.expr) : mon (list statement 
           ret (sl1 ++ makeif a1 (makeseq sl2) (makeseq sl3) :: nil,
                dummy_expr)
       end
+  (* =assign= *)
   | Csyntax.Eassign l1 r2 ty =>
       do (sl1, a1) <- transl_expr For_val l1;
       do (sl2, a2) <- transl_expr For_val r2;
@@ -302,6 +307,7 @@ Fixpoint transl_expr (dst: destination) (a: Csyntax.expr) : mon (list statement 
           ret (sl1 ++ sl2 ++ make_assign a1 a2 :: nil,
                dummy_expr)
       end
+  (* =end= *)
   | Csyntax.Eassignop ope l1 r2 tyres ty =>
       let ty1 := Csyntax.typeof l1 in
       do (sl1, a1) <- transl_expr For_val l1;

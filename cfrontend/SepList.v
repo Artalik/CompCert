@@ -93,8 +93,10 @@ Section hprop.
        in_empty_l : list_scope.
 
   (* Operators *)
+  (* =hprop= *)
   Context {X : Type}.
   Definition hprop := list X -> Prop.
+  (* =end= *)
 
   Definition hand (H1 H2:hprop):hprop :=
     fun h => H1 h /\ H2 h.
@@ -104,25 +106,26 @@ Section hprop.
   Definition hempty : hprop :=
     fun h => h = ∅.
 
+  (* =hsingle= *)
   Definition hsingle loc : hprop :=
     fun h =>  h ≡ [loc].
-
+  (* =end= *)
   Definition hheap_ctx (ctx : list X) : hprop := fun h => h ≡ ctx.
 
+  (* =hstar= *)
   Definition hstar (H1 H2 : hprop) : hprop :=
     fun h => exists h1 h2, H1 h1 /\ H2 h2 /\ h1 ## h2 /\ h ≡ h1 ∪ h2.
+  (* =end= *)
+  (* =hquantifier= *)
+  Definition hexist {A} (J : A -> hprop) : hprop := fun h => exists x, J x h.
 
-  Definition hexists {A} (J : A -> hprop) : hprop :=
-    fun h => exists x, J x h.
-
+  Definition hforal {A} (f : A -> hprop) : hprop := fun h => forall a, f a h.
+  (* =end= *)
   Definition hpure_aff (P:Prop) : hprop :=
     fun h => P /\ hempty h.
 
   Definition htop : hprop :=
     fun h => True.
-
-  Definition hforall {A} (f : A -> hprop) : hprop := fun h => forall a, f a h.
-
 
   Definition hwand (H1 H2 : hprop) : hprop :=
     hexists (fun (H:hprop) => (hstar H (hpure_aff ((hstar H H1) ==> H2)))).
@@ -130,7 +133,9 @@ Section hprop.
   Definition qwand A (Q1 Q2:A->hprop) :=
     hforall (fun x => hwand (Q1 x) (Q2 x)).
 
+  (* =hpure= *)
   Definition hpure (P : Prop) : hprop := fun h => P.
+  (* =end= *)
 
   Lemma hempty_intro : hempty ∅.
   Proof using. reflexivity. Qed.
@@ -297,7 +302,9 @@ Section hprop.
   Local Notation "'IsFresh' l" :=
     (single l) (at level 20) : bi_scope.
 
+  (* =neq= *)
   Lemma singleton_neq : forall t t', ⊢ IsFresh t -∗ IsFresh t' -∗ ⌜t ≠ t'⌝.
+  (* =end= *)
   Proof.
     MonPred.unseal. split. MonPred.unseal. repeat red. intros.
     exists emp, heap_empty, heap_empty. repeat split; auto with list_scope. clear H0. destruct a.
@@ -367,7 +374,9 @@ Section hprop.
     left; auto. intro. apply in_app_iff in H2 as [H2|H2]. auto. inv H2.
   Qed.
 
+  (* =equivalence= *)
   Lemma equivalence (Φ : monPred biInd hpropList) h : Φ () h <-> (⊢heap_ctx h -∗ Φ).
+  (* =end= *)
   Proof.
     split.
     apply completeness.

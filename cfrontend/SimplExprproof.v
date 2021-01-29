@@ -204,12 +204,14 @@ Section PRESERVATION.
     - subst; auto.
   Qed.
 
+  (* =tr_simple_iprop= *)
   Lemma tr_simple_expr_nil:
-    (forall r dst sl le a,
+    forall r dst sl le a,
         ⊢ tr_expr le dst r sl a -∗
         ⌜ dst = For_val \/ dst = For_effects ⌝ -∗
         ⌜ simple r = true ⌝ -∗
-        ⌜sl = nil ⌝).
+        ⌜sl = nil ⌝.
+  (* =end= *)
   Proof. apply (proj1 tr_simple_nil). Qed.
 
   Lemma tr_simple_exprlist_nil:
