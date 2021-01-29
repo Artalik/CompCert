@@ -883,10 +883,10 @@ Inductive match_cont : Csem.cont -> cont -> Prop :=
   | match_Kswitch2: forall k tk,
       match_cont k tk ->
       match_cont (Csem.Kswitch2 k) (Kswitch tk)
-  | match_Kcall: forall f e C ty k optid tf le sl tk a dest tmps,
+  | match_Kcall: forall f e C ty k optid tf le sl tk a dest,
       tr_function f tf ->
       leftcontext RV RV C ->
-      (forall v m, tr_top tge e (set_opttemp optid v le) m dest (C (Csyntax.Eval v ty)) sl a tmps) ->
+      (forall v m, tr_top tge e (set_opttemp optid v le) m dest (C (Csyntax.Eval v ty)) sl a) ->
       match_cont_exp dest a k tk ->
       match_cont (Csem.Kcall f e C ty k)
                  (Kcall optid tf e le (Kseqlist sl tk))
@@ -956,9 +956,9 @@ Qed.
 (** Matching between states *)
 
 Inductive match_states: Csem.state -> Clight.state -> Prop :=
-  | match_exprstates: forall f r k e m tf sl tk le dest a tmps,
+  | match_exprstates: forall f r k e m tf sl tk le dest a,
       tr_function f tf ->
-      tr_top tge e le m dest r sl a tmps ->
+      tr_top tge e le m dest r sl a ->
       match_cont_exp dest a k tk ->
       match_states (Csem.ExprState f r k e m)
                    (State tf Sskip (Kseqlist sl tk) e le m)
@@ -1151,8 +1151,8 @@ Proof.
 Qed.
 
 Lemma tr_find_label_top:
-  forall e le m dst r sl a tmp,
-    tr_top tge e le m dst r sl a tmp -> nolabel_list sl.
+  forall e le m dst r sl a,
+    tr_top tge e le m dst r sl a -> nolabel_list sl.
 Proof.
   intros. inv H; NoLabelTac.
   apply (soundness_pure tmp). iIntros "HA". apply completeness in H0.
@@ -1413,33 +1413,32 @@ Proof.
     assert (dest = For_val \/ dest = For_effects) as P0; [destruct dest; auto; inv H | inv P0].
 
   (* expr *)
-  - assert (tr_expr le dest r sl a () tmps).
-   + inv H9; auto. contradiction.
-   + exploit tr_simple_rvalue; eauto. apply completeness in H1. intro.
-     apply (soundness_pure tmps). iIntros "HA". iDestruct (H1 with "HA") as "HA".
-     iDestruct (H2 with "HA") as "%"; auto. destruct dest.
-     (* for val *)
-      * destruct H3 as (SL1&TY1&EV1). subst sl. iExists _.
-        iSplit; iPureIntro.
-        -- right; split.
-           ++ apply star_refl.
-           ++ destruct r; simpl; (contradiction || lia).
-        -- econstructor; eauto. instantiate (1 := nil). econstructor; auto.
+  - inv H9. contradiction.
+    exploit tr_simple_rvalue; eauto. apply completeness in H1. intro.
+    apply (soundness_pure tmp). iIntros "HA". iDestruct (H1 with "HA") as "HA".
+    iDestruct (H2 with "HA") as "%"; auto. destruct dest.
+    (* for val *)
+    * destruct H3 as (SL1&TY1&EV1). subst sl. iExists _.
+      iSplit; iPureIntro.
+      -- right; split.
+         ++ apply star_refl.
+         ++ destruct r; simpl; (contradiction || lia).
+      -- econstructor; eauto. econstructor; auto.
       (* for effects *)
-      * iClear "HA". subst sl. iExists _.
-        iSplit.
-        -- iPureIntro. right; split.
-           ++ apply star_refl.
-           ++ destruct r; simpl; (contradiction || lia).
-        -- iPureIntro. econstructor; eauto. instantiate (1 := nil). econstructor; auto.
-           simpl. apply soundness. auto.
-      * inv H10.
+    * iClear "HA". subst sl. iExists _.
+      iSplit.
+      -- iPureIntro. right; split.
+         ++ apply star_refl.
+         ++ destruct r; simpl; (contradiction || lia).
+      -- iPureIntro. econstructor; eauto. eapply tr_top_base. instantiate (1 := tmp).
+         simpl. apply soundness. auto.
+    * inv H10.
 
  (* rval volatile *)
   - inv H11; simpl in *; auto.
    + inv H; discriminate.
    + epose (tr_expr_leftcontext _ _ _ H) as H4. apply completeness in H2.
-     apply (soundness_pure tmps). iIntros "HA". iDestruct (H2 with "HA") as "HA".
+     apply (soundness_pure tmp). iIntros "HA". iDestruct (H2 with "HA") as "HA".
      iDestruct (H4 with "HA") as (dst'' sl1 sl2 a') "[P [% R]]".
      simpl. iDestruct "P" as ">P". norm_all.
      iDestruct (tr_simple_lvalue with "HG") as "[% [% %]]"; eauto. iClear "HG". subst.
@@ -1455,15 +1454,15 @@ Proof.
           eapply H5. simpl. iApply locally_lookup. iFrame.
        -- iPureIntro. auto.
        -- iModIntro. iSplit. iFrame. iExists _. iSplitL "HB"; eauto. iIntros.
-          iApply locally_conseq_pure. intros. constructor. eapply H5. simpl. iApply locally_lookup.
-          iFrame. eauto.
+          iApply locally_conseq_pure. intros. constructor. eapply H5. simpl.
+          iApply locally_lookup. iFrame. eauto.
 
  (* seqand true *)
  - inv H9; simpl in *; auto.
    + inv H; discriminate.
    + exploit tr_expr_leftcontext; eauto.
      intro. apply completeness in H2.
-     apply (soundness_pure tmps). iIntros "HA". iDestruct (H2 with "HA") as "HA".
+     apply (soundness_pure tmp). iIntros "HA". iDestruct (H2 with "HA") as "HA".
      iDestruct (H3 with "HA") as (dst' sl1 sl2 a') "[P [% R]]". clear H2. clear H3.
      simpl. iDestruct "P" as ">P".
      destruct dst'; norm_all; iDestruct (tr_simple_rvalue with "HE") as "[% [% %]]"; eauto; subst;
@@ -1485,7 +1484,7 @@ Proof.
    + inv H; discriminate.
    + exploit tr_expr_leftcontext; eauto.
      intro. apply completeness in H2.
-     apply (soundness_pure tmps). iIntros "HA". iDestruct (H2 with "HA") as "HA".
+     apply (soundness_pure tmp). iIntros "HA". iDestruct (H2 with "HA") as "HA".
      iDestruct (H3 with "HA") as (dst' sl1 sl2 a') "[P [% R]]". clear H2. clear H3. simpl.
      destruct dst'; norm_all; iDestruct (tr_simple_rvalue with "HG") as "[% [% %]]"; eauto; subst;
        iClear "HG"; iExists _; iSplit.
@@ -1519,7 +1518,7 @@ Proof.
    + inv H; discriminate.
    + exploit tr_expr_leftcontext; eauto.
      intro. apply completeness in H2.
-     apply (soundness_pure tmps). iIntros "HA". iDestruct (H2 with "HA") as "HA".
+     apply (soundness_pure tmp). iIntros "HA". iDestruct (H2 with "HA") as "HA".
      iDestruct (H3 with "HA") as (dst' sl1 sl2 a') "[P [% R]]". simpl. clear H2. clear H3. simpl.
      destruct dst'; norm_all; iDestruct (tr_simple_rvalue with "HG") as "[% [% %]]"; eauto; subst;
        iClear "HG"; iExists _; iSplit.
@@ -1555,7 +1554,7 @@ Proof.
    + inv H; discriminate.
    + exploit tr_expr_leftcontext; eauto.
      intro. apply completeness in H2.
-     apply (soundness_pure tmps). iIntros "HA". iDestruct (H2 with "HA") as "HA".
+     apply (soundness_pure tmp). iIntros "HA". iDestruct (H2 with "HA") as "HA".
      iDestruct (H3 with "HA") as (dst' sl1 sl2 a') "[P [% R]]". clear H2. clear H3. simpl.
      destruct dst'; norm_all; iDestruct (tr_simple_rvalue with "HG") as "[% [% %]]"; eauto;
        subst; iClear "HG"; iExists _; iSplit.
@@ -1589,7 +1588,7 @@ Proof.
    + inv H; discriminate.
    + exploit tr_expr_leftcontext; eauto.
      intro. apply completeness in H2.
-     apply (soundness_pure tmps). iIntros "HA". iDestruct (H2 with "HA") as "HA".
+     apply (soundness_pure tmp). iIntros "HA". iDestruct (H2 with "HA") as "HA".
      iDestruct (H3 with "HA") as (dst' sl1 sl2 a') "[P [% R]]". clear H2. clear H3. simpl.
      destruct dst'; norm_all.
      * iDestruct (tr_simple_rvalue with "HG") as "[% [% %]]"; eauto. subst.
@@ -1654,7 +1653,7 @@ Proof.
    + inv H; discriminate.
    + exploit tr_expr_leftcontext; eauto.
      intro. apply completeness in H4.
-     apply (soundness_pure tmps). iIntros "HA". iDestruct (H4 with "HA") as "HA".
+     apply (soundness_pure tmp). iIntros "HA". iDestruct (H4 with "HA") as "HA".
      iDestruct (H5 with "HA") as (dst' sl1 sl2 a') "[P [% R]]". clear H4. clear H5.
      simpl. iDestruct "P" as ">P". destruct dst'; norm_all.
      * iDestruct (tr_simple_rvalue with "HG") as "[% [% %]]"; eauto.
@@ -1711,7 +1710,7 @@ Proof.
    + inv H; discriminate.
    + exploit tr_expr_leftcontext; eauto.
      intro. apply completeness in H6.
-     apply (soundness_pure tmps). iIntros "HA". iDestruct (H6 with "HA") as "HA".
+     apply (soundness_pure tmp). iIntros "HA". iDestruct (H6 with "HA") as "HA".
      iDestruct (H7 with "HA") as (dst' sl1 sl2 a') "[P [% R]]". clear H6. clear H7.
      simpl. iDestruct "P" as ">P". destruct dst'; norm_all.
      * unfold tr_rvalof. destruct (type_is_volatile (Csyntax.typeof l)) eqn:?; norm_all.
@@ -1879,7 +1878,7 @@ Proof.
    + inv H; discriminate.
    + exploit tr_expr_leftcontext; eauto.
      intro. apply completeness in H4.
-     apply (soundness_pure tmps). iIntros "HA". iDestruct (H4 with "HA") as "HA".
+     apply (soundness_pure tmp). iIntros "HA". iDestruct (H4 with "HA") as "HA".
      iDestruct (H5 with "HA") as (dst' sl1 sl2 a') "[P [% R]]". clear H4. clear H5.
      simpl. iDestruct "P" as ">P". destruct dst'; norm_all.
      * iDestruct (tr_simple_lvalue with "HG") as "[% [% %]]"; eauto.
@@ -1907,7 +1906,7 @@ Proof.
  - inv H14; simpl in *; auto.
    + inv H; discriminate.
    + exploit tr_expr_leftcontext; eauto. intro. apply completeness in H5.
-     apply (soundness_pure tmps). iIntros "HA". iDestruct (H5 with "HA") as "HA".
+     apply (soundness_pure tmp). iIntros "HA". iDestruct (H5 with "HA") as "HA".
      iDestruct (H6 with "HA") as (dst' sl1 sl2 a') "[P [% R]]". clear H5. clear H6.
      simpl. iDestruct "P" as ">P". norm_all. destruct dst'; norm_all.
      * iDestruct (tr_simple_lvalue with "HE") as "[% [% %]]"; eauto.
@@ -1996,7 +1995,7 @@ Proof.
    + inv H; discriminate.
    + exploit tr_expr_leftcontext; eauto.
      intro. apply completeness in H3.
-     apply (soundness_pure tmps). iIntros "HA". iDestruct (H3 with "HA") as "HA".
+     apply (soundness_pure tmp). iIntros "HA". iDestruct (H3 with "HA") as "HA".
      iDestruct (H4 with "HA") as (dst' sl1 sl2 a') "[P [% R]]". clear H3. clear H4.
      simpl. iDestruct "P" as ">P"; norm_all. destruct dst'; norm_all.
      * iDestruct (tr_simple_lvalue with "HE") as "[% [% %]]"; eauto.
@@ -2018,7 +2017,7 @@ Proof.
    + inv H; discriminate.
    + exploit tr_expr_leftcontext; eauto.
      intro. apply completeness in H1.
-     apply (soundness_pure tmps). iIntros "HA". iDestruct (H1 with "HA") as "HA".
+     apply (soundness_pure tmp). iIntros "HA". iDestruct (H1 with "HA") as "HA".
      iDestruct (H2 with "HA") as (dst' sl1 sl2 a') "[P [% R]]". clear H1. clear H2.
      simpl. iDestruct "P" as (sl0 a2 sl3) ">P"; norm_all.
      iDestruct (tr_simple_rvalue with "HE") as "%"; eauto. iClear "HE".
@@ -2033,7 +2032,7 @@ Proof.
    + inv H; discriminate.
    + exploit tr_expr_leftcontext; eauto.
      intro. apply completeness in H2.
-     apply (soundness_pure tmps). iIntros "HA". iDestruct (H2 with "HA") as "HA".
+     apply (soundness_pure tmp). iIntros "HA". iDestruct (H2 with "HA") as "HA".
      iDestruct (H3 with "HA") as (dst' sl1 sl2 a') "[P [% R]]". clear H2. clear H3.
      simpl. iDestruct "P" as ">P". destruct dst'; norm_all.
      * iDestruct (tr_simple_rvalue with "HE") as (b) "[% [% %]]"; eauto. subst; simpl.
@@ -2085,7 +2084,7 @@ Proof.
    + inv H; discriminate.
    + exploit tr_expr_leftcontext; eauto.
      intro. apply completeness in H5.
-     apply (soundness_pure tmps). iIntros "HA". iDestruct (H5 with "HA") as "HA".
+     apply (soundness_pure tmp). iIntros "HA". iDestruct (H5 with "HA") as "HA".
      iDestruct (H6 with "HA") as (dst' sl1 sl2 a') "[P [% R]]". clear H5. clear H6.
      simpl. iDestruct "P" as ">P". destruct dst'; norm_all.
      * iDestruct (tr_simple_rvalue with "HI") as "[% [% %]]"; eauto.
@@ -2142,7 +2141,7 @@ Proof.
    + inv H; discriminate.
    + exploit tr_expr_leftcontext; eauto.
      intro. apply completeness in H2.
-     apply (soundness_pure tmps). iIntros "HA". iDestruct (H2 with "HA") as "HA".
+     apply (soundness_pure tmp). iIntros "HA". iDestruct (H2 with "HA") as "HA".
      iDestruct (H3 with "HA") as (dst' sl1 sl2 a') "[P [% R]]". clear H2. clear H3.
      simpl. iDestruct "P" as ">P". destruct dst'; norm_all.
      * iDestruct (tr_simple_exprlist with "HG []") as "[% %]"; eauto.
@@ -2180,8 +2179,8 @@ Qed.
 (** Forward simulation for statements. *)
 
 Lemma tr_top_val_for_val_inv:
-  forall e le m v ty sl a tmp,
-  tr_top tge e le m For_val (Csyntax.Eval v ty) sl a tmp ->
+  forall e le m v ty sl a,
+  tr_top tge e le m For_val (Csyntax.Eval v ty) sl a ->
   sl = nil /\ typeof a = ty /\ eval_expr tge e le m a v.
 Proof.
   intros. inv H; eauto. apply (soundness_pure tmp). iIntros "HA". apply completeness in H0.

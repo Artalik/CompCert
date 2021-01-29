@@ -385,8 +385,8 @@ Section SPEC.
     - iFrame; repeat iExists _; destruct dst; simpl; simpl_list; eauto.
     - repeat iExists _. iSplitL "HH"; eauto. iSplitL "HE"; auto.
     - repeat iExists _. iSplitL "HF"; eauto.
-    - repeat iExists _. iSplitL "HH"; eauto. iSplitL "HE"; auto. iSplitL "HC"; eauto. iSplitL; eauto.
-      iPureIntro. split; auto. do 2 (rewrite <- app_assoc; f_equal).
+    - repeat iExists _. iSplitL "HH"; eauto. iSplitL "HE"; auto. iSplitL "HC"; eauto.
+      iSplitL; eauto. iPureIntro. split; auto. do 2 (rewrite <- app_assoc; f_equal).
     - iSplitR; auto. repeat iExists _. iFrame. iSplitL "HJ"; eauto.
     - repeat iExists _. iFrame. iSplitL "HH"; eauto.
     - iSplitL "HM"; auto. repeat iExists _. iSplitL "HJ"; auto. iSplitL "HG"; eauto.
@@ -415,35 +415,46 @@ Section SPEC.
     Variable le: temp_env.
     Variable m: mem.
 
-    Inductive tr_top: destination -> Csyntax.expr -> list statement -> expr -> list ident -> Prop :=
-  | tr_top_val_val: forall v ty a tmp,
+    Inductive tr_top: destination -> Csyntax.expr -> list statement -> expr ->  Prop :=
+  | tr_top_val_val: forall v ty a,
       typeof a = ty -> eval_expr ge e le m a v ->
-      tr_top For_val (Csyntax.Eval v ty) nil a tmp
+      tr_top For_val (Csyntax.Eval v ty) nil a
   | tr_top_base: forall dst r sl a tmp,
       tr_expr le dst r sl a () tmp ->
-      tr_top dst r sl a tmp.
+      tr_top dst r sl a.
 
   End TR_TOP.
 
 
 (** Translation of statements *)
+
   Lemma start_proof (P Q : iProp) tmps : P () tmps -> (⊢ P -∗ Q) -> Q () tmps.
   Proof.
     intros. apply completeness in H. apply soundness. iIntros. iApply H0. iApply H. auto.
   Qed.
 
+  Lemma iProp_Prop : forall r dst v,
+      ((dest_below dst -∗ ∀ le : temp_env, tr_expr le dst r v.1 v.2)
+         -∗ dest_below dst -∗
+                        ⌜∀ ge e le m, tr_top ge e le m dst r v.1 v.2⌝)%stdpp.
+  Proof.
+    iIntros "* HA HB". iDestruct ("HA" with "HB") as "HA". iStopProof.
+    apply instance_heap. intros. econstructor.
+    apply (start_proof _ _ _ H). auto.
+  Qed.
+
   Lemma transl_expr_meets_spec:
     forall r dst,
-      ⊢ {{ emp }} transl_expr dst r {{ res;  dest_below dst -∗ ⌜ exists tmp, ∀ ge e le m, tr_top ge e le m dst r res.1 res.2 tmp ⌝ }}.
+      ⊢ {{ emp }} transl_expr dst r
+        {{ res;  dest_below dst -∗ ⌜ ∀ ge e le m, tr_top ge e le m dst r res.1 res.2 ⌝ }}.
   Proof.
     intros. iApply (consequence _ _ _ _ _ (proj1 transl_meets_spec _ _)); eauto.
-    iIntros "* HA HB". iDestruct ("HA" with "HB") as "HA". iStopProof. apply instance_heap.
-    intros. exists tmps. intros. constructor. apply (start_proof _ _ _ H). auto.
+    iIntros "* HA HB". iApply (iProp_Prop with "HA HB").
   Qed.
 
   Inductive tr_expression: Csyntax.expr -> statement -> expr -> Prop :=
-  | tr_expression_intro: forall r sl a tmps,
-      (forall ge e le m, tr_top ge e le m For_val r sl a tmps) ->
+  | tr_expression_intro: forall r sl a,
+      (forall ge e le m, tr_top ge e le m For_val r sl a) ->
       tr_expression r (makeseq sl) a.
 
 
@@ -451,32 +462,31 @@ Section SPEC.
       ⊢ {{ emp }} transl_expression r {{ res; ⌜ tr_expression r res.1 res.2 ⌝ }}.
   Proof.
     intro. unfold transl_expression. epose transl_expr_meets_spec. tac2.
-    iIntros; norm_all; iPureIntro. destruct H; eauto. econstructor; eauto.
+    iIntros; norm_all.
   Qed.
 
-
   Inductive tr_expr_stmt: Csyntax.expr -> statement -> Prop :=
-  | tr_expr_stmt_intro: forall r sl a tmps,
-      (forall ge e le m, tr_top ge e le m For_effects r sl a tmps) ->
+  | tr_expr_stmt_intro: forall r sl a,
+      (forall ge e le m, tr_top ge e le m For_effects r sl a) ->
       tr_expr_stmt r (makeseq sl).
 
   Lemma transl_expr_stmt_meets_spec: forall r,
       ⊢ {{ emp }} transl_expr_stmt r {{ res; ⌜ tr_expr_stmt r res ⌝}}.
   Proof.
     intro. unfold transl_expr_stmt. epose transl_expr_meets_spec. tac2.
-    iIntros; norm_all. iPureIntro. destruct H; auto. econstructor. eauto.
+    iIntros; norm_all. iPureIntro. econstructor. auto.
   Qed.
 
   Inductive tr_if: Csyntax.expr -> statement -> statement -> statement -> Prop :=
-  | tr_if_intro: forall r s1 s2 sl a tmps,
-      (forall ge e le m, tr_top ge e le m For_val r sl a tmps) ->
+  | tr_if_intro: forall r s1 s2 sl a,
+      (forall ge e le m, tr_top ge e le m For_val r sl a) ->
       tr_if r s1 s2 (makeseq (sl ++ makeif a s1 s2 :: nil)).
 
   Lemma transl_if_meets_spec: forall r s1 s2,
       ⊢ {{ emp }} transl_if r s1 s2 {{ res; ⌜ tr_if r s1 s2 res ⌝ }}.
   Proof.
-    intros. epose transl_expr_meets_spec. unfold transl_if; tac2.
-    iIntros; norm_all. iPureIntro. destruct H; auto. econstructor. eauto.
+    intros. unfold transl_if. epose transl_expr_meets_spec. tac2.
+    iIntros; norm_all.
   Qed.
 
   Inductive tr_stmt: Csyntax.statement -> statement -> Prop :=
