@@ -428,19 +428,12 @@ Section SPEC.
 
 (** Translation of statements *)
 
-  Lemma start_proof (P Q : iProp) tmps : P () tmps -> (⊢ P -∗ Q) -> Q () tmps.
+  Lemma tr_top_spec : forall r dst sl a,
+      ⊢(∀ le, tr_expr le dst r sl a)
+        -∗ ⌜∀ ge e le m, tr_top ge e le m dst r sl a⌝.
   Proof.
-    intros. apply completeness in H. apply soundness. iIntros. iApply H0. iApply H. auto.
-  Qed.
-
-  Lemma iProp_Prop : forall r dst v,
-      ((dest_below dst -∗ ∀ le : temp_env, tr_expr le dst r v.1 v.2)
-         -∗ dest_below dst -∗
-                        ⌜∀ ge e le m, tr_top ge e le m dst r v.1 v.2⌝)%stdpp.
-  Proof.
-    iIntros "* HA HB". iDestruct ("HA" with "HB") as "HA". iStopProof.
-    apply instance_heap. intros. econstructor.
-    apply (start_proof _ _ _ H). auto.
+    iIntros "* HA". iStopProof. apply instance_heap. intros. econstructor.
+    apply soundness. apply completeness in H. iIntros "HA". iApply (H with "HA").
   Qed.
 
   Lemma transl_expr_meets_spec:
@@ -449,7 +442,7 @@ Section SPEC.
         {{ res;  dest_below dst -∗ ⌜ ∀ ge e le m, tr_top ge e le m dst r res.1 res.2 ⌝ }}.
   Proof.
     intros. iApply (consequence _ _ _ _ _ (proj1 transl_meets_spec _ _)); eauto.
-    iIntros "* HA HB". iApply (iProp_Prop with "HA HB").
+    iIntros "* HA HB". iDestruct ("HA" with "HB") as "HA". iApply (tr_top_spec with "HA").
   Qed.
 
   Inductive tr_expression: Csyntax.expr -> statement -> expr -> Prop :=
@@ -594,7 +587,6 @@ with tr_lblstmts: Csyntax.labeled_statements -> labeled_statements -> Prop :=
     pose transl_expression_meets_spec. pose transl_if_meets_spec. pose transl_expr_stmt_meets_spec.
     clear transl_stmt_meets_spec. intro.
     induction s; rewrite /transl_stmt; fold transl_stmt; fold transl_lblstmt; tac3.
-
     - iIntros. iPureIntro. constructor.
     - apply (consequence _ _ _ _ _ (b1 e)); eauto. iIntros. iPureIntro. apply (tr_do _ _ a).
     - iIntros "[% [% _]]". iPureIntro. constructor; auto.
@@ -631,14 +623,12 @@ with tr_lblstmts: Csyntax.labeled_statements -> labeled_statements -> Prop :=
       fn_vars tf = Csyntax.fn_vars f ->
       tr_function f tf.
 
-
   Inductive tr_fundef: Csyntax.fundef -> Clight.fundef -> Prop :=
   | tr_internal: forall f tf,
       tr_function f tf ->
       tr_fundef (Internal f) (Internal tf)
   | tr_external: forall ef targs tres cconv,
       tr_fundef (External ef targs tres cconv) (External ef targs tres cconv).
-
 
   Lemma transl_function_spec:
     forall f tf,
