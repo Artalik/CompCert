@@ -152,20 +152,17 @@ Definition gensym (t : type) : mon ident := gensymOp t ret.
     * reflexivity.
     * simpl. do 2 f_equal. apply functional_extensionality. intro. apply m.
   Qed.
-  (* =run= *)
-Definition fresh (ty : type) (s: generator) : ident * generator :=
-  let h := gen_trail s in
-  let n := gen_next s in
-  (n, mkgenerator  (Pos.succ n) ((n,ty) :: h)).
 
+(* =run= *)
 Fixpoint run {X} (m : mon X) : generator -> res (generator * X) :=
   match m with
   | ret v => fun s => OK (s, v)
   | errorOp e => fun s => Error e
   | gensymOp t f =>
     fun s =>
-      let (i,s') := fresh t s in
-      run (f i) s'
+      let h := gen_trail s in
+      let n := gen_next s in
+      run (f n) (mkgenerator (Pos.succ n) ((n,ty) :: h))
   end.
 (* =end= *)
 
@@ -367,13 +364,14 @@ Lemma adequacy {X} : forall (e : mon X) (Q : X -> iProp) s v s' H,
     iDestruct (H1 with "HA") as "$".
   Qed.
 
+  (* =adequacy_pure= *)
   Lemma adequacy_pure_init {X} : forall (e : mon X) (Q : X -> Prop) v s' H,
-      (⊢ H) -> (⊢ {{ H }} e {{ v; ⌜ Q v ⌝}}) ->
-      run e initial_state = Errors.OK (s', v) ->
+      ⊢ H -> ⊢ {{ H }} e {{ v; ⌜ Q v ⌝}} ->
+      run e initial_state = OK (s', v) ->
       Q v.
   Proof.
     intros. eapply adequacy_pure; eauto.
     iIntros "_". iApply H1; auto.
   Qed.
-
+(* =end= *)
 End adequacy.

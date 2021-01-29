@@ -419,19 +419,24 @@ Lemma transl_meets_spec :
 
 
   Section TR_TOP.
+(* =tr_top= *)
+Variable ge: genv.
+Variable e: Clight.env.
+Variable le: temp_env.
+Variable m: mem.
 
-    Variable ge: genv.
-    Variable e: Clight.env.
-    Variable le: temp_env.
-    Variable m: mem.
+Inductive tr_top: destination -> Csyntax.expr -> list statement -> expr ->  Prop :=
+(* =end= *)
 
-    Inductive tr_top: destination -> Csyntax.expr -> list statement -> expr ->  Prop :=
-  | tr_top_val_val: forall v ty a,
-      typeof a = ty -> eval_expr ge e le m a v ->
-      tr_top For_val (Csyntax.Eval v ty) nil a
-  | tr_top_base: forall dst r sl a tmp,
-      tr_expr le dst r sl a () tmp ->
-      tr_top dst r sl a.
+| tr_top_val_val: forall v ty a,
+    typeof a = ty -> eval_expr ge e le m a v ->
+    tr_top For_val (Csyntax.Eval v ty) nil a
+
+(* =tr_top_base= *)
+| tr_top_base: forall dst r sl a tmp,
+    tr_expr le dst r sl a () tmp ->
+    tr_top dst r sl a.
+(* =end= *)
 
   End TR_TOP.
 
@@ -449,7 +454,7 @@ Lemma transl_meets_spec :
   Lemma transl_expr_meets_spec:
     forall r dst,
       ⊢ {{ emp }} transl_expr dst r
-        {{ res;  dest_below dst -∗ ⌜ ∀ ge e le m, tr_top ge e le m dst r res.1 res.2 ⌝ }}.
+        {{ (sl,a);  dest_below dst -∗ ⌜∀ ge e le m, tr_top ge e le m dst r sl a⌝ }}.
   Proof.
     intros. iApply (consequence _ _ _ _ _ (proj1 transl_meets_spec _ _)); eauto.
     iIntros "* HA HB". iDestruct ("HA" with "HB") as "HA". iApply (tr_top_spec with "HA").
@@ -460,9 +465,8 @@ Lemma transl_meets_spec :
       (forall ge e le m, tr_top ge e le m For_val r sl a) ->
       tr_expression r (makeseq sl) a.
 
-
   Lemma transl_expression_meets_spec: forall r,
-      ⊢ {{ emp }} transl_expression r {{ res; ⌜ tr_expression r res.1 res.2 ⌝ }}.
+      ⊢ {{ emp }} transl_expression r {{ (s,a); ⌜ tr_expression r s a ⌝ }}.
   Proof.
     intro. unfold transl_expression. epose transl_expr_meets_spec. tac2.
     iIntros; norm_all.

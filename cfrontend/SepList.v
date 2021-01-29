@@ -92,11 +92,17 @@ Section hprop.
        list_disjoint_union_l list_disjoint_empty_r list_disjoint_empty_l
        in_empty_l : list_scope.
 
-  (* Operators *)
+
+(* Supprimer pour compiler :*)
   (* =hprop= *)
+Definition hprop := list ident -> Prop.
+(* =end= *)
+
+(* Operators *)
+
 Context {X : Type}.
 Definition hprop := list X -> Prop.
-  (* =end= *)
+
 
 Definition hand (H1 H2:hprop):hprop :=
   fun h => H1 h /\ H2 h.
@@ -127,10 +133,10 @@ Definition hforal {A} (f : A -> hprop) : hprop := fun h => forall a, f a h.
     fun h => True.
 
   Definition hwand (H1 H2 : hprop) : hprop :=
-    hexists (fun (H:hprop) => (hstar H (hpure_aff ((hstar H H1) ==> H2)))).
+    hexist (fun (H:hprop) => (hstar H (hpure_aff ((hstar H H1) ==> H2)))).
 
   Definition qwand A (Q1 Q2:A->hprop) :=
-    hforall (fun x => hwand (Q1 x) (Q2 x)).
+    hforal (fun x => hwand (Q1 x) (Q2 x)).
 
 (* =hpure= *)
 Definition hpure (P : Prop) : hprop := fun h => P.
@@ -222,16 +228,16 @@ Definition hpure (P : Prop) : hprop := fun h => P.
 
   Program Canonical Structure hpropList : bi :=
     Bi hprop _ _ pred_incl hempty hpure hand hor
-       pred_impl (@hforall) (@hexists) hstar hwand hpersistent hlater _ _ _ _.
+       pred_impl (@hforal) (@hexist) hstar hwand hpersistent hlater _ _ _ _.
   Next Obligation.
     repeat split; try(solve_proper); eauto with list_scope.
     - intros H h P. assumption.
     - rewrite /Transitive. intros. intros h P. eauto.
     - rewrite leibniz_equiv_iff. intros (P0&P1). extens. split; intro; auto.
     - intros n P0 P1 equiv. extens. unfold hpure. auto.
-    - intros A n P0 P1 equiv. unfold hforall. eapply functional_extensionality in equiv.
+    - intros A n P0 P1 equiv. unfold hforal. eapply functional_extensionality in equiv.
       subst. auto.
-    - intros A n P0 P1 equiv. unfold hexists. eapply functional_extensionality in equiv.
+    - intros A n P0 P1 equiv. unfold hexist. eapply functional_extensionality in equiv.
       subst. auto.
     - intros. intros l0 P0. red in P0. apply H; repeat red; auto.
     - intros. intros l P0. destruct P0. auto.
@@ -268,13 +274,13 @@ Definition hpure (P : Prop) : hprop := fun h => P.
       + apply P1. apply in_app_or in H4 as [H4|H4]. apply in_app_iff. left; auto.
         apply H0. apply in_app_iff. left; auto. apply in_app_iff. right; auto.
     - rewrite /hpersistent. intros P Q H h P0. apply H. apply P0.
-    - rewrite /hpersistent. rewrite /hforall. intros A B C D E. apply D.
+    - rewrite /hpersistent. rewrite /hforal. intros A B C D E. apply D.
     - rewrite /hpersistent. intros P Q h P0. inversion_star h P. apply P2.
     - intros P Q x W. destruct W. exists heap_empty; exists x. repeat split; auto with list_scope.
   Qed.
   Next Obligation.
     repeat split; try(solve_proper); eauto.
-    - intros A Φ h a. rewrite /hlater. unfold hforall in *. unfold hlater in a. apply a.
+    - intros A Φ h a. rewrite /hlater. unfold hforal in *. unfold hlater in a. apply a.
     - intros A Φ h a. rewrite /hor. unfold hlater in *. destruct a. right. exists x. apply H.
     - intros Hp h P. unfold hlater in *. right. intro. apply P.
   Qed.
@@ -374,7 +380,7 @@ Lemma singleton_neq : forall t t', ⊢ IsFresh t -∗ IsFresh t' -∗ ⌜t ≠ t
   Qed.
 
   (* =equivalence= *)
-Lemma equivalence (Φ : monPred biInd hpropList) h : Φ () h <-> (⊢heap_ctx h -∗ Φ).
+Lemma equivalence (Φ : iProp) h : Φ () h ↔ (⊢heap_ctx h -∗ Φ).
   (* =end= *)
   Proof.
     split.
