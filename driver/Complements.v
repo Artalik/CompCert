@@ -102,7 +102,7 @@ Theorem bigstep_cstrategy_preservation:
        program_behaves (Asm.semantics tp) (Reacts T)
     \/ exists t, program_behaves (Asm.semantics tp) (Diverges t) /\ traceinf_prefix t T).
 Proof.
-  intuition.
+  intros. split; intros.
   apply transf_cstrategy_program_preservation with p; auto. red; auto.
   apply behavior_bigstep_terminates with (Cstrategy.bigstep_semantics p); auto.
   apply Cstrategy.bigstep_semantics_sound.
@@ -136,7 +136,7 @@ Definition c_program_satisfies_spec (p: Csyntax.program) (spec: specification): 
   forall beh,  program_behaves (Csem.semantics p) beh -> spec beh.
 Definition asm_program_satisfies_spec (p: Asm.program) (spec: specification): Prop :=
   forall beh,  program_behaves (Asm.semantics p) beh -> spec beh.
-  
+
 (** It is not always the case that if the source program satisfies a
   specification, then the generated assembly code satisfies it as
   well.  For example, if the specification is ``the program goes wrong
@@ -152,7 +152,7 @@ Definition safety_enforcing_specification (spec: specification): Prop :=
   forall beh, spec beh -> not_wrong beh.
 
 (** As the main result of this section, we show that CompCert
-  compilation preserves safety-enforcing specifications: 
+  compilation preserves safety-enforcing specifications:
   any such specification that is satisfied by the source C program is
   always satisfied by the generated assembly code. *)
 
@@ -167,7 +167,7 @@ Proof.
   exploit transf_c_program_preservation; eauto. intros (beh' & CEXEC & IMPR).
   apply CSAT in CEXEC. destruct IMPR as [EQ | [t [A B]]].
 - congruence.
-- subst beh'. apply SES in CEXEC. contradiction. 
+- subst beh'. apply SES in CEXEC. contradiction.
 Qed.
 
 (** Safety-enforcing specifications are not the only good properties
@@ -197,7 +197,7 @@ Proof.
 - congruence.
 - destruct CEXEC as (beh1' & EQ').
   destruct B as (beh1 & EQ).
-  subst beh'. destruct beh1'; simpl in A; inv A. 
+  subst beh'. destruct beh1'; simpl in A; inv A.
   exists (behavior_app t0 beh1). apply behavior_app_assoc.
 Qed.
 
@@ -213,7 +213,7 @@ Variable c_units: nlist Csyntax.program.
 
 (** The compiled code: a list of Asm compilation units, obtained by separate compilation *)
 Variable asm_units: nlist Asm.program.
-Hypothesis separate_compilation_succeeds: 
+Hypothesis separate_compilation_succeeds:
   nlist_forall2 (fun cu tcu => transf_c_program cu = OK tcu) c_units asm_units.
 
 (** We assume that the source C compilation units can be linked together
@@ -225,9 +225,9 @@ Hypothesis source_linking: link_list c_units = Some c_program.
 Lemma compiled_linking_succeeds:
   { asm_program | link_list asm_units = Some asm_program }.
 Proof.
-  destruct (link_list asm_units) eqn:E. 
+  destruct (link_list asm_units) eqn:E.
 - exists p; auto.
-- exfalso. 
+- exfalso.
   exploit separate_transf_c_program_correct; eauto. intros (a & P & Q).
   congruence.
 Qed.
@@ -247,11 +247,11 @@ Theorem separate_transf_c_program_preservation:
   exists beh', program_behaves (Csem.semantics c_program) beh' /\ behavior_improves beh' beh.
 Proof.
   intros. exploit separate_transf_c_program_correct; eauto. intros (a & P & Q).
-  assert (a = asm_program) by congruence. subst a. 
+  assert (a = asm_program) by congruence. subst a.
   eapply backward_simulation_behavior_improves; eauto.
 Qed.
 
-(** As a corollary, if [c_program] is free of undefined behaviors, 
+(** As a corollary, if [c_program] is free of undefined behaviors,
   the behavior of [asm_program] is one of the possible behaviors of [c_program]. *)
 
 Theorem separate_transf_c_program_is_refinement:
@@ -262,7 +262,7 @@ Proof.
   assert (not_wrong beh') by auto.
   inv Q.
 - auto.
-- destruct H2 as (t & U & V). subst beh'. elim H1. 
+- destruct H2 as (t & U & V). subst beh'. elim H1.
 Qed.
 
 (** We now show that if all executions of [c_program] satisfy a specification,
@@ -279,7 +279,7 @@ Proof.
   exploit separate_transf_c_program_preservation; eauto. intros (beh' & CEXEC & IMPR).
   apply CSAT in CEXEC. destruct IMPR as [EQ | [t [A B]]].
 - congruence.
-- subst beh'. apply SES in CEXEC. contradiction. 
+- subst beh'. apply SES in CEXEC. contradiction.
 Qed.
 
 (** As another corollary of [separate_transf_c_program_preservation],
@@ -297,7 +297,7 @@ Proof.
 - congruence.
 - destruct CEXEC as (beh1' & EQ').
   destruct B as (beh1 & EQ).
-  subst beh'. destruct beh1'; simpl in A; inv A. 
+  subst beh'. destruct beh1'; simpl in A; inv A.
   exists (behavior_app t0 beh1). apply behavior_app_assoc.
 Qed.
 
