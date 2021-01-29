@@ -94,12 +94,12 @@ Section hprop.
 
   (* Operators *)
   (* =hprop= *)
-  Context {X : Type}.
-  Definition hprop := list X -> Prop.
+Context {X : Type}.
+Definition hprop := list X -> Prop.
   (* =end= *)
 
-  Definition hand (H1 H2:hprop):hprop :=
-    fun h => H1 h /\ H2 h.
+Definition hand (H1 H2:hprop):hprop :=
+  fun h => H1 h /\ H2 h.
 
   Definition hor (H1 H2:hprop) : hprop := fun h => H1 h \/ H2 h.
 
@@ -107,19 +107,18 @@ Section hprop.
     fun h => h = ∅.
 
   (* =hsingle= *)
-  Definition hsingle loc : hprop :=
-    fun h =>  h ≡ [loc].
+Definition hsingle l : hprop := fun h =>  h ≡ [l].
   (* =end= *)
   Definition hheap_ctx (ctx : list X) : hprop := fun h => h ≡ ctx.
 
   (* =hstar= *)
-  Definition hstar (H1 H2 : hprop) : hprop :=
-    fun h => exists h1 h2, H1 h1 /\ H2 h2 /\ h1 ## h2 /\ h ≡ h1 ∪ h2.
+Definition hstar (H1 H2 : hprop) : hprop :=
+  fun h => exists h1 h2, H1 h1 /\ H2 h2 /\ h1 ## h2 /\ h ≡ h1 ∪ h2.
   (* =end= *)
   (* =hquantifier= *)
-  Definition hexist {A} (J : A -> hprop) : hprop := fun h => exists x, J x h.
+Definition hexist {A} (J : A -> hprop) : hprop := fun h => exists x, J x h.
 
-  Definition hforal {A} (f : A -> hprop) : hprop := fun h => forall a, f a h.
+Definition hforal {A} (f : A -> hprop) : hprop := fun h => forall a, f a h.
   (* =end= *)
   Definition hpure_aff (P:Prop) : hprop :=
     fun h => P /\ hempty h.
@@ -133,9 +132,9 @@ Section hprop.
   Definition qwand A (Q1 Q2:A->hprop) :=
     hforall (fun x => hwand (Q1 x) (Q2 x)).
 
-  (* =hpure= *)
-  Definition hpure (P : Prop) : hprop := fun h => P.
-  (* =end= *)
+(* =hpure= *)
+Definition hpure (P : Prop) : hprop := fun h => P.
+(* =end= *)
 
   Lemma hempty_intro : hempty ∅.
   Proof using. reflexivity. Qed.
@@ -303,7 +302,7 @@ Section hprop.
     (single l) (at level 20) : bi_scope.
 
   (* =neq= *)
-  Lemma singleton_neq : forall t t', ⊢ IsFresh t -∗ IsFresh t' -∗ ⌜t ≠ t'⌝.
+Lemma singleton_neq : forall t t', ⊢ IsFresh t -∗ IsFresh t' -∗ ⌜t ≠ t'⌝.
   (* =end= *)
   Proof.
     MonPred.unseal. split. MonPred.unseal. repeat red. intros.
@@ -375,7 +374,7 @@ Section hprop.
   Qed.
 
   (* =equivalence= *)
-  Lemma equivalence (Φ : monPred biInd hpropList) h : Φ () h <-> (⊢heap_ctx h -∗ Φ).
+Lemma equivalence (Φ : monPred biInd hpropList) h : Φ () h <-> (⊢heap_ctx h -∗ Φ).
   (* =end= *)
   Proof.
     split.

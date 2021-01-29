@@ -37,11 +37,11 @@ Section SPEC.
    *)
 
   (* =dest_below_iprop= *)
-  Definition dest_below (dst: destination) : iProp :=
-    match dst with
-    | For_set sd => IsFresh (sd_temp sd)
-    | _ => emp
-    end.
+Definition dest_below (dst: destination) : iProp :=
+  match dst with
+  | For_set sd => IsFresh (sd_temp sd)
+  | _ => emp
+  end.
   (* =end= *)
 
   Definition final (dst: destination) (a: expr) : list statement :=
@@ -59,9 +59,9 @@ Section SPEC.
     else
       ⌜ls =nil /\ e = e1⌝%I.
   (* =tr_expr_iprop= *)
-  Fixpoint tr_expr (le : temp_env) (dst : destination) (e : Csyntax.expr)
-           (sl : list statement ) (a : expr) : iProp :=
-    (* =end= *)
+Fixpoint tr_expr (*[*)(le : temp_env) (dst : destination) (e : Csyntax.expr)
+         (sl : list statement ) (a : expr) (*]*): iProp :=
+  (* =end= *)
     (<absorb>
      match e with
      | Csyntax.Evar id ty =>
@@ -176,14 +176,18 @@ Section SPEC.
       ⌜ sl = sl2 ++ makeif a2 (makeseq sl3) (makeseq sl4) :: nil ⌝
      end
     (* =assign_spec_iprop= *)
-    | Csyntax.Eassign e1 e2 ty =>
-      match dst with
-      | For_val | For_set _ =>
-      ∃ sl2 a2 sl3 a3 t,
-       tr_expr le For_val e1 sl2 a2  ∗
-       tr_expr le For_val e2 sl3 a3  ∗
-       IsFresh t ∗ dest_below dst ∗
-       ⌜ sl = sl2 ++ sl3 ++ Sset t (Ecast a3 (Csyntax.typeof e1)) :: make_assign a2 (Etempvar t (Csyntax.typeof e1)) :: final dst (Etempvar t (Csyntax.typeof e1)) /\ a = Etempvar t (Csyntax.typeof e1)⌝
+  | Csyntax.Eassign e1 e2 ty =>
+    match dst with
+    | For_val | For_set _ =>
+      ∃ (*[*)sl2 a2 sl3 a3 (*]*)t,
+       tr_expr (*[*)le For_val e1 sl2 a2(*]*) ∗
+       tr_expr (*[*)le For_val e2 sl3 a3 (*]*)∗
+       IsFresh t ∗
+       dest_below dst ∗
+       ⌜ (*[*)sl = sl2 ++ sl3 ++ Sset t (Ecast a3 (Csyntax.typeof e1)) ::
+                       make_assign a2 (Etempvar t (Csyntax.typeof e1)) ::
+                       final dst (Etempvar t (Csyntax.typeof e1)) /\
+       a = Etempvar t (Csyntax.typeof e1)(*]*)⌝
     (* =end= *)
       | For_effects =>
         ∃ sl2 a2 sl3 a3,
@@ -350,11 +354,11 @@ Section SPEC.
   Combined Scheme tr_expr_exprlist from expr_ind2, exprlist_ind2.
 
   (* =transl_meets_spec_iprop= *)
-  Lemma transl_meets_spec :
-    (forall r dst,
-        ⊢ {{ emp }} transl_expr dst r
-          {{ (sl,a); dest_below dst -∗ ∀ le, tr_expr le dst r sl a }})
-    (* =end= *)
+Lemma transl_meets_spec :
+  (forall r dst,
+      ⊢ {{ emp }} transl_expr dst r
+        {{ (sl,a); dest_below dst -∗ ∀ le, tr_expr le dst r sl a }})
+  (* =end= *)
     /\
     (forall rl,
         ⊢{{ emp }} transl_exprlist rl {{ res; ∀ le, tr_exprlist le rl res.1 res.2 }}).
