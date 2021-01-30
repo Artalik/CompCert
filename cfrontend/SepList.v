@@ -94,7 +94,7 @@ Section hprop.
 
 
 (* Supprimer pour compiler :*)
-  (* =hprop= *)
+(* =hprop= *)
 Definition hprop := list ident -> Prop.
 (* =end= *)
 
@@ -112,20 +112,20 @@ Definition hand (H1 H2:hprop):hprop :=
   Definition hempty : hprop :=
     fun h => h = ∅.
 
-  (* =hsingle= *)
+(* =hsingle= *)
 Definition hsingle l : hprop := fun h =>  h ≡ [l].
-  (* =end= *)
+(* =end= *)
   Definition hheap_ctx (ctx : list X) : hprop := fun h => h ≡ ctx.
 
-  (* =hstar= *)
+(* =hstar= *)
 Definition hstar (H1 H2 : hprop) : hprop :=
   fun h => exists h1 h2, H1 h1 /\ H2 h2 /\ h1 ## h2 /\ h ≡ h1 ∪ h2.
-  (* =end= *)
-  (* =hquantifier= *)
+(* =end= *)
+(* =hquantifier= *)
 Definition hexist {A} (J : A -> hprop) : hprop := fun h => exists x, J x h.
 
 Definition hforal {A} (f : A -> hprop) : hprop := fun h => forall a, f a h.
-  (* =end= *)
+(* =end= *)
   Definition hpure_aff (P:Prop) : hprop :=
     fun h => P /\ hempty h.
 
@@ -139,7 +139,7 @@ Definition hforal {A} (f : A -> hprop) : hprop := fun h => forall a, f a h.
     hforal (fun x => hwand (Q1 x) (Q2 x)).
 
 (* =hpure= *)
-Definition hpure (P : Prop) : hprop := fun h => P.
+Definition hpure (P : Prop) : hprop := fun _ => P.
 (* =end= *)
 
   Lemma hempty_intro : hempty ∅.
@@ -304,12 +304,15 @@ Definition hpure (P : Prop) : hprop := fun h => P.
   Ltac inv H := inversion H; clear H; subst.
 
   Local Open Scope bi_scope.
-  Local Notation "'IsFresh' l" :=
+  Local Notation "'@' l" :=
     (single l) (at level 20) : bi_scope.
 
-  (* =neq= *)
-Lemma singleton_neq : forall t t', ⊢ IsFresh t -∗ IsFresh t' -∗ ⌜t ≠ t'⌝.
-  (* =end= *)
+  Local Notation "'@@' l" :=
+    (heap_ctx l) (at level 20) : bi_scope.
+
+(* =neq= *)
+Lemma singleton_neq : forall t t', ⊢ @ t -∗ @ t' -∗ ⌜t ≠ t'⌝.
+(* =end= *)
   Proof.
     MonPred.unseal. split. MonPred.unseal. repeat red. intros.
     exists emp, heap_empty, heap_empty. repeat split; auto with list_scope. clear H0. destruct a.
@@ -368,7 +371,7 @@ Lemma singleton_neq : forall t t', ⊢ IsFresh t -∗ IsFresh t' -∗ ⌜t ≠ t
       apply P in H2. apply in_app_iff in H2 as [H2|H2]; auto. inv H2.
   Qed.
 
-  Lemma completeness (Φ : monPred biInd hpropList) h : Φ () h -> (⊢heap_ctx h -∗ Φ).
+  Lemma completeness (Φ : monPred biInd hpropList) h : Φ () h -> (⊢@@ h -∗ Φ).
   Proof.
     MonPred.unseal. split. MonPred.unseal. intros. repeat red. intros.
     exists emp. exists x; exists heap_empty. repeat split; auto with list_scope.
@@ -379,9 +382,10 @@ Lemma singleton_neq : forall t t', ⊢ IsFresh t -∗ IsFresh t' -∗ ⌜t ≠ t
     left; auto. intro. apply in_app_iff in H2 as [H2|H2]. auto. inv H2.
   Qed.
 
-  (* =equivalence= *)
-Lemma equivalence (Φ : iProp) h : Φ () h ↔ (⊢heap_ctx h -∗ Φ).
-  (* =end= *)
+  Definition iProp := monPred biInd hpropList.
+(* =equivalence= *)
+Lemma equivalence (Φ : iProp) h : Φ () h ↔ (⊢ @@ h -∗ Φ).
+(* =end= *)
   Proof.
     split.
     apply completeness.
@@ -405,7 +409,10 @@ Notation "'heap_empty'" := (∅).
 
 Notation "'\[]'" := (hempty) (at level 0).
 
-Notation "\[ P ]" := (hpure_aff P) (at level 0, P at level 99, format "\[ P ]").
+(* =hpure_notation= *)
+Notation "\[ P ]" := (hpure_aff P)
+(* =end= *)
+                       (at level 0, P at level 99, format "\[ P ]").
 
 Notation "H1 '\*' H2" := (hstar H1 H2) (at level 41, right associativity).
 
