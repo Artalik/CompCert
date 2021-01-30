@@ -369,9 +369,10 @@ Lemma adequacy {X} : forall (e : mon X) (Q : X -> iProp) s v s' H,
       ⊢ H -> ⊢ {{ H }} e {{ v; ⌜ Q v ⌝}} ->
       run e initial_state = OK (s', v) ->
       Q v.
+  (* =end= *)
   Proof.
     intros. eapply adequacy_pure; eauto.
     iIntros "_". iApply H1; auto.
   Qed.
-(* =end= *)
+
 End adequacy.

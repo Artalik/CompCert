@@ -353,10 +353,10 @@ Fixpoint tr_expr (*[*)(le : temp_env) (dst : destination) (e : Csyntax.expr) (sl
   Combined Scheme tr_expr_exprlist from expr_ind2, exprlist_ind2.
 
   (* =transl_meets_spec_iprop= *)
-Lemma transl_meets_spec :
-  (forall r dst,
-      ⊢ {{ emp }} transl_expr dst r
-        {{ (sl,a); dest_below dst -∗ ∀ le, tr_expr le dst r sl a }})
+  Lemma transl_meets_spec :
+    (forall r dst,
+        ⊢ {{ emp }} transl_expr (*[*)dst r (*]*)
+       {{ (sl,a); dest_below dst -∗ (*[*)∀ le, (*]*)tr_expr (**) le dst r sl a (*]*) }})
   (* =end= *)
     /\
     (forall rl,

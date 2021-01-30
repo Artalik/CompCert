@@ -305,8 +305,8 @@ Fixpoint transl_expr (dst: destination) (*[*)(a: Csyntax.expr) (*]*): mon (*[*)(
                             make_assign a1 (Etempvar t ty1) :: nil)
                   (Etempvar t ty1))(*]*)
     | For_effects =>
-      ret (sl1 ++ sl2 ++ make_assign a1 a2 :: nil,
-           dummy_expr)
+      ret (*[*)(sl1 ++ sl2 ++ make_assign a1 a2 :: nil,
+           dummy_expr) (*]*)
     end
   (* =end= *)
   | Csyntax.Eassignop ope l1 r2 tyres ty =>
