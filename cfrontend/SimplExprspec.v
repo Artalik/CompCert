@@ -347,7 +347,8 @@ Section SPEC.
 
   Lemma transl_meets_spec :
     (forall r dst,
-        ⊢ {{ emp }} transl_expr dst r {{ res; dest_below dst -∗ ∀ le, tr_expr le dst r res.1 res.2 }})
+        ⊢ {{ emp }}
+          transl_expr dst r {{ res; dest_below dst -∗ ∀ le, tr_expr le dst r res.1 res.2 }})
     /\
     (forall rl,
         ⊢{{ emp }} transl_exprlist rl {{ res; ∀ le, tr_exprlist le rl res.1 res.2 }}).
@@ -611,12 +612,23 @@ with tr_lblstmts: Csyntax.labeled_statements -> labeled_statements -> Prop :=
       + iIntros "[% [% _]]". iPureIntro. constructor; auto.
   Qed.
 
+  Inductive tr_fun : Csyntax.statement -> (statement * list (ident * type)) -> Prop :=
+  | tr_fun_intro : forall s ts l,
+      tr_stmt s ts ->
+      tr_fun s (ts, l).
+
+  Lemma transl_fun_meets_spec : forall s,
+      ⊢ {{ emp }} transl_fun s {{ res; ⌜ tr_fun s res ⌝}}.
+  Proof.
+    intro. unfold transl_fun. tac3. apply transl_stmt_meets_spec. Frame. eapply trail_spec.
+    iIntros "[_ %]". eauto.
+    Qed.
 
   (** Relational presentation for the transformation of functions, fundefs, and variables. *)
 
   Inductive tr_function: Csyntax.function -> Clight.function -> Prop :=
-  | tr_function_intro: forall f tf,
-      tr_stmt f.(Csyntax.fn_body) tf.(fn_body) ->
+  | tr_function_intro: forall f tf l,
+      tr_fun f.(Csyntax.fn_body) (tf.(fn_body),l) ->
       fn_return tf = Csyntax.fn_return f ->
       fn_callconv tf = Csyntax.fn_callconv f ->
       fn_params tf = Csyntax.fn_params f ->
@@ -636,11 +648,11 @@ with tr_lblstmts: Csyntax.labeled_statements -> labeled_statements -> Prop :=
       tr_function f tf.
   Proof.
     unfold transl_function; intros.
-    destruct (run (transl_stmt (Csyntax.fn_body f)) initial_state) eqn:?; inversion H.
+    destruct (run (transl_fun (Csyntax.fn_body f))) eqn:?; inversion H.
     destruct p. simpl in *.
-    apply tr_function_intro; auto; simpl.
-    eapply (adequacy_pure_init (transl_stmt (Csyntax.fn_body f)) _  s g emp); auto.
-    iApply (transl_stmt_meets_spec (Csyntax.fn_body f)).
+    eapply tr_function_intro; auto; simpl.
+    eapply adequacy.
+    2 : apply Heqr. apply transl_fun_meets_spec.
   Qed.
 
   Lemma transl_fundef_spec:

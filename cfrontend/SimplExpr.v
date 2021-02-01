@@ -462,9 +462,15 @@ with transl_lblstmt (ls: Csyntax.labeled_statements) : mon labeled_statements :=
       ret (LScons c ts tls1)
   end.
 
+
 (** Translation of a function *)
+Definition transl_fun (s: Csyntax.statement) : mon (statement * list (ident * type)) :=
+  let! v := transl_stmt s in
+  let! tyl := trail in
+  ret (v,tyl).
+
 Definition transl_function (f: Csyntax.function) : res function :=
-  match run (transl_stmt f.(Csyntax.fn_body)) gensym.initial_state  with
+  match run (transl_fun f.(Csyntax.fn_body))  with
   | Error msg =>
       Error msg
   | OK tbody =>
@@ -473,8 +479,8 @@ Definition transl_function (f: Csyntax.function) : res function :=
               f.(Csyntax.fn_callconv)
               f.(Csyntax.fn_params)
               f.(Csyntax.fn_vars)
-              (gen_trail (fst tbody))
-              (snd tbody))
+              (snd tbody)
+              (fst tbody))
   end.
 
 Local Open Scope error_monad_scope.

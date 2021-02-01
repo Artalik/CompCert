@@ -107,20 +107,25 @@ Module gensym.
 
   Definition initial_state : generator := mkgenerator 1%positive nil.
 
+
   Inductive mon (X : Type) : Type :=
   | ret : X -> mon X
   | errorOp : Errors.errmsg -> mon X
-  | gensymOp : type -> (ident -> mon X) -> mon X.
+  | gensymOp : type -> (ident -> mon X) -> mon X
+  | trailOp : (list (ident * type) -> mon X) -> mon X.
 
   Arguments errorOp [X].
   Arguments gensymOp [X].
+  Arguments trailOp [X].
   Arguments ret {_} x.
+
 
   Fixpoint bind {X Y} (m : mon X) (f : X -> mon Y) : mon Y :=
     match m with
     | ret x => f x
     | errorOp e => errorOp e
     | gensymOp t g => gensymOp t (fun x => bind (g x) f)
+    | trailOp g => trailOp (fun x => bind (g x) f)
     end.
 
   Notation "'let!' x ':=' e1 'in' e2" := (bind e1 (fun x => e2)) (x ident, at level 90).
@@ -129,6 +134,7 @@ Module gensym.
 
   Definition error {X} (e : Errors.errmsg) : mon X := errorOp e.
   Definition gensym (t : type) : mon ident := gensymOp t ret.
+  Definition trail : mon (list (ident * type)) := trailOp ret.
 
   Lemma lid : forall X Y (a : X) (f : X -> mon Y), bind (ret a) f = f a.
   Proof. auto. Qed.
@@ -137,9 +143,8 @@ Module gensym.
   Proof.
     fix m 2.
     destruct m0.
-    * reflexivity.
-    * reflexivity.
-    * simpl. do 2 f_equal. apply functional_extensionality. intro. apply m.
+    1 - 2 : reflexivity.
+    all : simpl; do 2 f_equal; apply functional_extensionality; intro; apply m.
   Qed.
 
   Lemma ass_bind : forall X Y Z (m : mon X) f (g : Y -> mon Z),
@@ -147,9 +152,8 @@ Module gensym.
   Proof.
     fix m 4.
     destruct m0; intros.
-    * reflexivity.
-    * reflexivity.
-    * simpl. do 2 f_equal. apply functional_extensionality. intro. apply m.
+    1 - 2 : reflexivity.
+    all : simpl; do 2 f_equal; apply functional_extensionality; intro; apply m.
   Qed.
 
   Fixpoint eval {X} (m : mon X) : generator -> res (generator * X) :=
@@ -161,6 +165,10 @@ Module gensym.
       let h := gen_trail s in
       let n := gen_next s in
       eval (f n) (mkgenerator (Pos.succ n) ((n,ty) :: h))
+  | trailOp f =>
+    fun s =>
+      let h := gen_trail s in
+      eval (f h) s
   end.
 
 Definition run {X} (m: mon X): res X :=
@@ -184,6 +192,7 @@ Module weakestpre_gensym.
     | ret v => Q v
     | errorOp e => True
     | gensymOp _ f => ∀ l, IsFresh l -∗ wp (f l) Q
+    | trailOp f => ∀ l, wp (f l) Q
     end.
 
   Notation "'{{' P } } e {{ v ; Q } }" := (P -∗ wp e (fun v => Q))
@@ -199,9 +208,8 @@ Proof.
   destruct e0.
   - iApply "HB". iApply "HA".
   - simpl. auto.
-  - simpl. iIntros (l) "HC".
-      iDestruct ("HA" with "HC") as "HA".
-      iPoseProof "HB" as "HB". apply e.
+  - simpl. iIntros (l) "HC". iDestruct ("HA" with "HC") as "HA". iPoseProof "HB" as "HB". apply e.
+  - simpl. iIntros (l). iDestruct ("HA" $! l) as "HA". iPoseProof "HB" as "HB". apply e.
 Qed.
 
 Lemma wp_consequence : forall {X} (P Q : X -> iProp) (f : mon X),
@@ -212,6 +220,7 @@ Proof.
   induction f; simpl; intros; auto.
   - iIntros "HA HB". iApply ("HB" with "HA").
   - iIntros "HA * HB * HC". iApply (H with "[HA HC] HB"). iApply ("HA" with "HC").
+  - iIntros "HA HB *". iApply (H with "HA HB").
 Qed.
 
 Lemma ret_spec {X} (v : X) H (Q : X -> iProp) :
@@ -277,6 +286,9 @@ Lemma error_spec {X} (Q : X -> iProp) e :
   ⊢{{ True }} error e {{ v; Q v }}.
 Proof. auto. Qed.
 
+Lemma trail_spec : ⊢{{ emp }} trail {{ _; emp  }}.
+Proof. auto. Qed.
+
 End weakestpre_gensym.
 
 Module adequacy.
@@ -320,6 +332,7 @@ Module adequacy.
         iDestruct (heap_ctx_split with "HA") as "[HA HB]". apply next_disjoint.
         iDestruct (H with "HA") as "HA".
         iApply ("HA" with "HB").
+    - simpl in *. eapply e; eauto. iIntros "HA". iApply (H with "HA").
   Qed.
 
   Lemma adequacy_init {X} : forall (e : mon X) (Q : X -> iProp) s' v,
@@ -370,17 +383,18 @@ Module adequacy.
   Implicit Type Q: X -> Prop.
   Implicit Type v: X.
 
-  Lemma adequacy: forall m P Q v,
-      (⊢ P) -> (⊢ {{ P }} m {{ v; ⌜ Q v ⌝}}) ->
+  Lemma adequacy: forall m Q v,
+      (⊢ {{ emp }} m {{ v; ⌜ Q v ⌝}}) ->
       run m = OK v -> Q v.
   Proof.
     intros m.
     unfold run. intros.
-    destruct (eval m initial_state) eqn:H2; try inversion H1.
-    destruct p. inversion H1; subst.
+    destruct (eval m initial_state) eqn:H2.
+    destruct p. inversion H0. subst.
     eapply adequacy_pure; eauto.
     iIntros "_".
-    iApply H0. iApply H.
+    iApply H. auto.
+    inversion H0.
   Qed.
 
   End Adequacy.

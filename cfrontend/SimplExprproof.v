@@ -2467,7 +2467,7 @@ Proof.
 (* goto *)
   inv H7.
   inversion H6; subst.
-  exploit tr_find_label. eauto. apply match_cont_call. eauto.
+  exploit tr_find_label. inversion H0. eauto. apply match_cont_call. eauto.
   instantiate (1 := lbl). rewrite H.
   intros [ts' [tk' [P [Q R]]]].
   econstructor; split.
@@ -2475,7 +2475,7 @@ Proof.
   econstructor; eauto.
 
 (* internal function *)
-  inv H7. inversion H3; subst.
+  inv H7. inversion H3; subst. inversion H2.
   econstructor; split.
   left; apply plus_one. eapply step_internal_function. econstructor.
   rewrite H6; rewrite H7; auto.
