@@ -112,19 +112,21 @@ Inductive mon (X : Type) : Type :=
 | ret : X -> mon X
 | errorOp : Errors.errmsg -> mon X
 | gensymOp : type -> (ident -> mon X) -> mon X
-| trailOp : (list (ident * type) -> mon X) -> mon X.
+| trailOp : unit -> (list (ident * type) -> mon X) -> mon X.
 (* =end= *)
+
   Arguments errorOp [X].
   Arguments gensymOp [X].
   Arguments trailOp [X].
   Arguments ret {_} x.
+
 (* =bind= *)
 Fixpoint bind {X Y} (m : mon X) (f : X -> mon Y) : mon Y :=
   match m with
   | ret x => f x
   | errorOp e => errorOp e
   | gensymOp t g => gensymOp t (fun x => bind (g x) f)
-  | trailOp g => trailOp (fun x => bind (g x) f)
+  | trailOp _ g => trailOp tt (fun x => bind (g x) f)
   end.
 (* =end= *)
   Notation "'let!' x ':=' e1 'in' e2" := (bind e1 (fun x => e2)) (x ident, at level 90).
@@ -133,8 +135,9 @@ Fixpoint bind {X Y} (m : mon X) (f : X -> mon Y) : mon Y :=
 (* =operators= *)
 Definition error {X} (e : Errors.errmsg) : mon X := errorOp e.
 Definition gensym (t : type) : mon ident := gensymOp t ret.
-Definition trail : mon (list (ident * type)) := trailOp ret.
+Definition trail (_ : unit): mon (list (ident * type)) := trailOp tt ret.
 (* =end= *)
+
   Lemma lid : forall X Y (a : X) (f : X -> mon Y), bind (ret a) f = f a.
   Proof. auto. Qed.
 
@@ -143,7 +146,9 @@ Definition trail : mon (list (ident * type)) := trailOp ret.
     fix m 2.
     destruct m0.
     1 - 2 : reflexivity.
-    all : simpl; do 2 f_equal; apply functional_extensionality; intro; apply m.
+    all : simpl; do 2 f_equal.
+    2 : destruct u; auto.
+    all : apply functional_extensionality; intro; apply m.
   Qed.
 
   Lemma ass_bind : forall X Y Z (m : mon X) f (g : Y -> mon Z),
@@ -165,7 +170,7 @@ Fixpoint eval {X} (m : mon X) : generator -> res (generator * X) :=
       let h := gen_trail s in
       let n := gen_next s in
       eval (f n) (mkgenerator (Pos.succ n) ((n,ty) :: h))
-  | trailOp f =>
+  | trailOp _ f =>
     fun s =>
       let h := gen_trail s in
       eval (f h) s
@@ -189,16 +194,18 @@ Module weakestpre_gensym.
   Import reduction.
 
   Definition iProp := monPred biInd (@hpropList ident).
-  (* =wp= *)
+
+(* =wp= *)
 Fixpoint wp {X} (e1 : mon X) (Q : X -> iProp) : iProp :=
   match e1 with
   | ret v => Q v
   | errorOp e => True
   | gensymOp _ f => ∀ l, IsFresh l -∗ wp (f l) Q
-  | trailOp f => ∀ l, wp (f l) Q
+  | trailOp _ f => ∀ l, wp (f l) Q
   end.
 (* =end= *)
-  Notation "'{{' P } } e {{ v ; Q } }" := (P -∗ wp e (fun v => Q))
+
+Notation "'{{' P } } e {{ v ; Q } }" := (P -∗ wp e (fun v => Q))
                                             (at level 20,
                                              format "'[hv' {{  P  } }  '/  ' e  '/'  {{  v ;  Q  } } ']'").
 
@@ -281,6 +288,7 @@ Qed.
 Ltac Frame := eapply intro_true_r; eapply frame.
 
 (** Effects rules *)
+
 (* =gensym_spec= *)
 Lemma gensym_spec t : ⊢{{ emp }} gensym t {{ l; IsFresh l }}.
 (* =end= *)
@@ -291,9 +299,8 @@ Lemma error_spec {X} (Q : X -> iProp) e : ⊢{{ True }} error e {{ v; Q v }}.
 (* =end= *)
 Proof. auto. Qed.
 
-
 (* =trail_spec= *)
-Lemma trail_spec : ⊢{{ emp }} trail {{ _; emp  }}.
+Lemma trail_spec  : ⊢{{ emp }} trail tt {{ _; emp  }}.
 (* =end= *)
 Proof. auto. Qed.
 
