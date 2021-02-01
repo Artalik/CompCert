@@ -112,7 +112,7 @@ Module gensym.
   | ret : X -> mon X
   | errorOp : Errors.errmsg -> mon X
   | gensymOp : type -> (ident -> mon X) -> mon X
-  | trailOp : (list (ident * type) -> mon X) -> mon X.
+  | trailOp : unit -> (list (ident * type) -> mon X) -> mon X.
 
   Arguments errorOp [X].
   Arguments gensymOp [X].
@@ -125,7 +125,7 @@ Module gensym.
     | ret x => f x
     | errorOp e => errorOp e
     | gensymOp t g => gensymOp t (fun x => bind (g x) f)
-    | trailOp g => trailOp (fun x => bind (g x) f)
+    | trailOp _ g => trailOp tt (fun x => bind (g x) f)
     end.
 
   Notation "'let!' x ':=' e1 'in' e2" := (bind e1 (fun x => e2)) (x ident, at level 90).
@@ -134,7 +134,7 @@ Module gensym.
 
   Definition error {X} (e : Errors.errmsg) : mon X := errorOp e.
   Definition gensym (t : type) : mon ident := gensymOp t ret.
-  Definition trail : mon (list (ident * type)) := trailOp ret.
+  Definition trail (_ : unit): mon (list (ident * type)) := trailOp tt ret.
 
   Lemma lid : forall X Y (a : X) (f : X -> mon Y), bind (ret a) f = f a.
   Proof. auto. Qed.
@@ -144,7 +144,9 @@ Module gensym.
     fix m 2.
     destruct m0.
     1 - 2 : reflexivity.
-    all : simpl; do 2 f_equal; apply functional_extensionality; intro; apply m.
+    all : simpl; do 2 f_equal.
+    2 : destruct u; auto.
+    all : apply functional_extensionality; intro; apply m.
   Qed.
 
   Lemma ass_bind : forall X Y Z (m : mon X) f (g : Y -> mon Z),
@@ -165,7 +167,7 @@ Module gensym.
       let h := gen_trail s in
       let n := gen_next s in
       eval (f n) (mkgenerator (Pos.succ n) ((n,ty) :: h))
-  | trailOp f =>
+  | trailOp _ f =>
     fun s =>
       let h := gen_trail s in
       eval (f h) s
@@ -192,7 +194,7 @@ Module weakestpre_gensym.
     | ret v => Q v
     | errorOp e => True
     | gensymOp _ f => ∀ l, IsFresh l -∗ wp (f l) Q
-    | trailOp f => ∀ l, wp (f l) Q
+    | trailOp _ f => ∀ l, wp (f l) Q
     end.
 
   Notation "'{{' P } } e {{ v ; Q } }" := (P -∗ wp e (fun v => Q))
@@ -278,15 +280,15 @@ Qed.
 Ltac Frame := eapply intro_true_r; eapply frame.
 
 (** Effects rules *)
-Lemma gensym_spec t :
-  ⊢{{ emp }} gensym t {{ l; IsFresh l }}.
+Lemma gensym_spec ty :
+  ⊢{{ emp }} gensym ty {{ l; IsFresh l }}.
 Proof. simpl; auto. Qed.
 
 Lemma error_spec {X} (Q : X -> iProp) e :
   ⊢{{ True }} error e {{ v; Q v }}.
 Proof. auto. Qed.
 
-Lemma trail_spec : ⊢{{ emp }} trail {{ _; emp  }}.
+Lemma trail_spec  : ⊢{{ emp }} trail tt {{ _; emp  }}.
 Proof. auto. Qed.
 
 End weakestpre_gensym.

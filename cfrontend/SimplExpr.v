@@ -466,7 +466,7 @@ with transl_lblstmt (ls: Csyntax.labeled_statements) : mon labeled_statements :=
 (** Translation of a function *)
 Definition transl_fun (s: Csyntax.statement) : mon (statement * list (ident * type)) :=
   let! v := transl_stmt s in
-  let! tyl := trail in
+  let! tyl := trail () in
   ret (v,tyl).
 
 Definition transl_function (f: Csyntax.function) : res function :=
