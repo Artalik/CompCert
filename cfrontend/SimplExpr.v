@@ -156,11 +156,11 @@ Definition make_assign (l r: expr) : statement :=
   assignment.  In this case, [a] is meaningless.
 *)
 
+(* =destination= *)
 Inductive set_destination : Type :=
   | SDbase (tycast ty: type) (tmp: ident)
   | SDcons (tycast ty: type) (tmp: ident) (sd: set_destination).
 
-(* =destination= *)
 Inductive destination : Type :=
   | For_val
   | For_effects
@@ -293,8 +293,8 @@ Fixpoint transl_expr (dst: destination) (*[*)(a: Csyntax.expr) (*]*): mon (*[*)(
       end
   (* =assign= *)
   | Csyntax.Eassign (*[*)l1 r2 ty (*]*)=>
-    do (*[*)(sl1, a1) (*]*)<- transl_expr (*[*)For_val l1(*]*);
-    do (*[*)(sl2, a2)(*]*) <- transl_expr (*[*)For_val r2(*]*);
+    do (*[*)(sl1, a1) (*]*)<- transl_expr For_val (*[*)l1(*]*);
+    do (*[*)(sl2, a2)(*]*) <- transl_expr For_val (*[*)r2(*]*);
     (*[*)let ty1 := Csyntax.typeof l1 in
     let ty2 := Csyntax.typeof r2 in(*]*)
     match dst with

@@ -59,7 +59,7 @@ Definition dest_below (dst: destination) : iProp :=
     else
       ⌜ls =nil /\ e = e1⌝%I.
   (* =tr_expr_iprop= *)
-Fixpoint tr_expr (*[*)(le : temp_env) (dst : destination) (e : Csyntax.expr) (sl : list statement ) (a : expr) (*]*) : iProp :=
+Fixpoint tr_expr (*[*)(le : temp_env)(*]*) (dst : destination) (*[*)(e : Csyntax.expr) (sl : list statement ) (a : expr) (*]*) : iProp :=
   (* =end= *)
     (<absorb>
      match e with
@@ -356,7 +356,7 @@ Fixpoint tr_expr (*[*)(le : temp_env) (dst : destination) (e : Csyntax.expr) (sl
   Lemma transl_meets_spec :
     (forall r dst,
         ⊢ {{ emp }} transl_expr (*[*)dst r (*]*)
-       {{ res; dest_below dst -∗ (*[*)∀ le, (*]*)tr_expr (**) le dst r res.1 res.2 (*]*) }})
+       {{ res; dest_below dst -∗ (*[*)∀ le, (*]*)tr_expr (*[*) le (*]*) dst (*[*) r res.1 res.2 (*]*) }})
   (* =end= *)
     /\
     (forall rl,
