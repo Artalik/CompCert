@@ -153,21 +153,28 @@ Definition gensym (t : type) : mon ident := gensymOp t ret.
     * simpl. do 2 f_equal. apply functional_extensionality. intro. apply m.
   Qed.
 
-(* =run= *)
-Fixpoint run {X} (m : mon X) : generator -> res (generator * X) :=
+(* =eval= *)
+Fixpoint eval {X} (m : mon X) : generator -> res (generator * X) :=
   match m with
   | ret v => fun s => OK (s, v)
   | errorOp e => fun s => Error e
-  | gensymOp t f =>
+  | gensymOp ty f =>
     fun s =>
       let h := gen_trail s in
       let n := gen_next s in
-      run (f n) (mkgenerator (Pos.succ n) ((n,ty) :: h))
+      eval (f n) (mkgenerator (Pos.succ n) ((n,ty) :: h))
+  end.
+(* =end= *)
+
+(* =run= *)
+Definition run {X} (m: mon X): res X :=
+  match eval m initial_state with
+  | OK (_, v) => OK v
+  | Error e => Error e
   end.
 (* =end= *)
 
 End gensym.
-
 
 Module weakestpre_gensym.
   Export gensym.
@@ -280,6 +287,7 @@ Proof. auto. Qed.
 End weakestpre_gensym.
 
 Module adequacy.
+  Import Errors.
   Export weakestpre_gensym.
 
   Definition inject n := List.map Pos.of_nat (seq 1 (pred (Pos.to_nat n))).
@@ -306,7 +314,7 @@ Module adequacy.
 
   Lemma adequacy_wp {X} : forall (e : mon X) (Q : X -> iProp) (s s' : generator) v,
       (heap_ctx (inject (gen_next s)) ⊢ wp e Q) ->
-      run e s = Errors.OK (s', v) ->
+      eval e s = Errors.OK (s', v) ->
       (Q v) () (inject (gen_next s')).
   Proof.
     fix e 1.
@@ -323,14 +331,14 @@ Module adequacy.
 
   Lemma adequacy_init {X} : forall (e : mon X) (Q : X -> iProp) s' v,
       (⊢ wp e Q) ->
-      run e initial_state = Errors.OK (s', v) ->
+      eval e initial_state = Errors.OK (s', v) ->
       (Q v) () (inject (gen_next s')).
   Proof. intros. eapply adequacy_wp; eauto. auto. Qed.
 
-  (* =adequacy= *)
-Lemma adequacy {X} : forall (e : mon X) (Q : X -> iProp) s v s' H,
+  (* =adequacy_core= *)
+Lemma adequacy_core {X} : forall (e : mon X) (Q : X -> iProp) s v s' H,
     (heap_ctx (inject (gen_next s)) ⊢ H) -> (⊢ {{ H }} e {{ v; Q v }}) ->
-    run e s = Errors.OK (s', v) ->
+    eval e s = Errors.OK (s', v) ->
     (Q v) () (inject (gen_next s')).
   (* =end= *)
   Proof.
@@ -340,7 +348,7 @@ Lemma adequacy {X} : forall (e : mon X) (Q : X -> iProp) s v s' H,
 
   Lemma adequacy_triple_init {X} : forall (e : mon X) (Q : X -> iProp) v s' H,
       (⊢ H) -> (⊢ {{ H }} e {{ v; Q v }}) ->
-      run e initial_state = Errors.OK (s', v) ->
+      eval e initial_state = Errors.OK (s', v) ->
       (Q v) () (inject (gen_next s')).
   Proof.
     intros. eapply adequacy_init; eauto. iApply H1; eauto.
@@ -348,7 +356,7 @@ Lemma adequacy {X} : forall (e : mon X) (Q : X -> iProp) s v s' H,
 
   Lemma adequacy_wp_pure {X} : forall (e : mon X) (Q : X -> Prop) s v s',
       (heap_ctx (inject (gen_next s)) ⊢ wp e (fun v =>  ⌜Q v⌝)) ->
-      run e s = Errors.OK (s', v) ->
+      eval e s = Errors.OK (s', v) ->
       Q v.
   Proof.
     intros. apply (soundness_pure (inject (gen_next s'))). iApply completeness.
@@ -357,22 +365,35 @@ Lemma adequacy {X} : forall (e : mon X) (Q : X -> iProp) s v s' H,
 
   Lemma adequacy_pure {X} : forall (e : mon X) (Q : X -> Prop) s v s' H,
       (heap_ctx (inject (gen_next s)) ⊢ H) -> (⊢ {{ H }} e {{ v; ⌜ Q v ⌝}}) ->
-      run e s = Errors.OK (s', v) ->
+      eval e s = Errors.OK (s', v) ->
       Q v.
   Proof.
     intros. eapply adequacy_wp_pure; eauto. iIntros "HA". iDestruct (H0 with "HA") as "HA".
     iDestruct (H1 with "HA") as "$".
   Qed.
 
+  Section Adequacy.
+  Variable X: Type.
+  Implicit Type m: mon X.
+  Implicit Type P: iProp.
+  Implicit Type Q: X -> Prop.
+  Implicit Type v: X.
+
   (* =adequacy_pure= *)
-  Lemma adequacy_pure_init {X} : forall (e : mon X) (Q : X -> Prop) v s' H,
-      ⊢ H -> ⊢ {{ H }} e {{ v; ⌜ Q v ⌝}} ->
-      run e initial_state = OK (s', v) ->
-      Q v.
+  Lemma adequacy: forall m P Q v,
+      (⊢ P) -> (⊢ {{ P }} m {{ v; ⌜ Q v ⌝}}) ->
+      run m = OK v -> Q v.
   (* =end= *)
   Proof.
-    intros. eapply adequacy_pure; eauto.
-    iIntros "_". iApply H1; auto.
+  intros m.
+  unfold run. intros.
+  destruct (eval m initial_state) eqn:H2; try inversion H1.
+  destruct p. inversion H1; subst.
+  eapply adequacy_pure; eauto.
+  iIntros "_".
+  iApply H0. iApply H.
   Qed.
+
+  End Adequacy.
 
 End adequacy.
