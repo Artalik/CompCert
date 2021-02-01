@@ -393,11 +393,11 @@ Lemma adequacy_core {X} : forall (e : mon X) (Q : X -> iProp) s v s' H,
   Implicit Type Q: X -> Prop.
   Implicit Type v: X.
 
-  (* =adequacy_pure= *)
-  Lemma adequacy: forall m Q v,
-      (⊢ {{ emp }} m {{ v; ⌜ Q v ⌝}}) ->
-      run m = OK v -> Q v.
-  (* =end= *)
+(* =adequacy= *)
+Lemma adequacy: forall m Q v,
+   (⊢ {{ emp }} m {{ v; ⌜ Q v ⌝}}) ->
+   run m = OK v -> Q v.
+(* =end= *)
   Proof.
   intros m.
   unfold run. intros.
