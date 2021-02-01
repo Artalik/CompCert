@@ -93,16 +93,11 @@ Section hprop.
        in_empty_l : list_scope.
 
 
-(* Supprimer pour compiler :*)
+(* Operators *)
 (* =hprop= *)
+Context {ident : Type}.
 Definition hprop := list ident -> Prop.
 (* =end= *)
-
-(* Operators *)
-
-Context {X : Type}.
-Definition hprop := list X -> Prop.
-
 
 Definition hand (H1 H2:hprop):hprop :=
   fun h => H1 h /\ H2 h.
@@ -115,7 +110,7 @@ Definition hand (H1 H2:hprop):hprop :=
 (* =hsingle= *)
 Definition hsingle l : hprop := fun h =>  h ≡ [l].
 (* =end= *)
-  Definition hheap_ctx (ctx : list X) : hprop := fun h => h ≡ ctx.
+  Definition hheap_ctx (ctx : list ident) : hprop := fun h => h ≡ ctx.
 
 (* =hstar= *)
 Definition hstar (H1 H2 : hprop) : hprop :=
@@ -216,7 +211,7 @@ Definition hpure (P : Prop) : hprop := fun _ => P.
           right. apply U'. apply in_or_app. left; auto.
           apply U. apply in_or_app. right. apply U'. apply in_or_app. right; auto. } }
     Qed.
-    Axiom prop_eq : forall (l1 l2 : list X) (P : hprop), l1 ≡ l2 -> P l1 -> P l2.
+    Axiom prop_eq : forall (l1 l2 : list ident) (P : hprop), l1 ≡ l2 -> P l1 -> P l2.
   End Properties.
 
   Definition hpersistent (H:hprop) : hprop := fun h => H ∅.
@@ -297,9 +292,9 @@ Definition hpure (P : Prop) : hprop := fun _ => P.
 
   Program Canonical Structure biInd := BiIndex unit inhabited_unit _ PreOrder_unit.
 
-  Definition single (l : X) : @monPred biInd hpropList := MonPred (fun _ => hsingle l) _.
+  Definition single (l : ident) : @monPred biInd hpropList := MonPred (fun _ => hsingle l) _.
 
-  Definition heap_ctx (h : list X) : monPred biInd hpropList := MonPred (fun _ => hheap_ctx h) _.
+  Definition heap_ctx (h : list ident) : monPred biInd hpropList := MonPred (fun _ => hheap_ctx h) _.
 
   Ltac inv H := inversion H; clear H; subst.
 
@@ -392,7 +387,7 @@ Lemma equivalence (Φ : iProp) h : Φ () h ↔ (⊢ @@ h -∗ Φ).
     apply soundness.
   Qed.
 
-  Lemma heap_ctx_split (h h' : list X) : h ## h' -> (⊢heap_ctx (h \u h') -∗ heap_ctx h ∗ heap_ctx h').
+  Lemma heap_ctx_split (h h' : list ident) : h ## h' -> (⊢heap_ctx (h \u h') -∗ heap_ctx h ∗ heap_ctx h').
   Proof.
     MonPred.unseal. split. MonPred.unseal. repeat red. intros. destruct a. destruct i. clear H1.
     inv H0. exists emp, ∅, ∅. repeat split; eauto with list_scope. intros l P0.
@@ -434,4 +429,4 @@ Ltac inversion_star h P :=
 
 Open Scope bi_scope.
 
-Definition IsFresh {type} l : monPred biInd (@hpropList type) := single l.
+Definition IsFresh {ident} l : monPred biInd (@hpropList ident) := single l.
