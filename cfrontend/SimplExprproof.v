@@ -145,10 +145,6 @@ Section PRESERVATION.
     intros. split; intro H; inversion H; subst; eauto.
   Qed.
 
-  Import adequacy.
-
-  Local Set Warnings "-deprecated".
-
   Ltac apply_ind_simple_nil l h :=
     match goal with
     | H : Datatypes.negb _ = true |- _ => apply negb_true_iff in H; apply_ind_simple_nil l h
@@ -192,16 +188,22 @@ Section PRESERVATION.
     (forall r dst sl le a,
         ⊢ tr_expr le dst r sl a -∗
           ⌜ dst = For_val \/ dst = For_effects ⌝ -∗
-                                              ⌜ simple r = true ⌝ -∗
-                                                                ⌜sl = nil ⌝)
+          ⌜ simple r = true ⌝ -∗
+          ⌜sl = nil ⌝)
     /\(forall rl le sl al, ⊢ tr_exprlist le rl sl al -∗ ⌜ simplelist rl = true ⌝ -∗ ⌜ sl = nil ⌝).
   Proof.
+    Ltac case_dst :=
+      match goal with
+      | H : ?dst = For_val \/ ?dst = For_effects |- _ => destruct H; subst; norm_all
+      | _ => idtac
+      end.
+
     apply tr_expr_exprlist; intros; simpl in *; try discriminate; auto;
-      iIntros; norm_all; apply_ind apply_ind_simple_nil; try(destruct a0; subst; norm_all).
+      iIntros; norm_all; apply_ind apply_ind_simple_nil; subst; case_dst.
     - unfold tr_rvalof; rewrite P0; norm_all; subst; auto.
     - unfold tr_rvalof; rewrite P0; norm_all; subst; auto.
-    - destruct a; auto.
-    - subst; auto.
+    - destruct H; auto.
+    - auto.
   Qed.
 
   (* =tr_simple_iprop= *)
@@ -362,9 +364,10 @@ Lemma tr_simple_expr_nil:
             ⌜ sl = nil /\ eval_exprlist tge e le m al tyl vl ⌝.
   Proof.
     induction rl.
-    - iIntros. inversion a.
-      iPureIntro. repeat split; eauto. inversion a0. subst. constructor.
-    - simpl. iIntros. norm_all. inversion a. subst. iDestruct (IHrl with "HD []") as "[% %]"; eauto.
+    - simpl. iIntros "* [% %] *" (P0). inversion P0. subst.
+      iPureIntro. repeat split; eauto. constructor.
+    - simpl. iIntros "* HA *" (P0). norm_all. inversion P0. subst.
+      iDestruct (IHrl with "HD []") as "[% %]"; eauto.
       iDestruct (tr_simple_rvalue with "HB") as "[% [% %]]"; eauto.
       iPureIntro. subst. split; auto. econstructor; eauto. rewrite <- H2. eauto.
   Qed.
@@ -1149,7 +1152,7 @@ Proof.
   - destruct dst; norm_all; apply_ind apply_ind_label; subst; iPureIntro; NoLabelTac.
   - destruct dst; norm_all; apply_ind apply_ind_label; auto.
     destruct (Pos.eq_dec x0 (sd_temp sd)); norm_all; apply_ind apply_ind_label; auto.
-  - destruct a. subst. NoLabelTac.
+  - destruct H. subst. NoLabelTac.
 Qed.
 
 Lemma tr_find_label_top:
@@ -2025,7 +2028,7 @@ Proof.
      iDestruct (tr_simple_rvalue with "HE") as "%"; eauto. iClear "HE".
      iExists _. iSplit.
      * iPureIntro. right; split. apply star_refl. apply plus_lt_compat_r.
-        apply (leftcontext_size _ _ _ H). simpl. omega.
+        apply (leftcontext_size _ _ _ H). simpl. lia.
      * iConstructor. iIntros "[HB HD]". iDestruct ("HD" $! r2 with "[]") as "HD"; eauto.
        subst. iApply (locally_out with "HD"). simpl. iFrame.
 

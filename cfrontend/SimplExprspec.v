@@ -22,7 +22,6 @@ Import adequacy.
 Section SPEC.
 
   Local Open Scope gensym_monad_scope.
-  Notation "a ! b" := (get b a) (at level 1).
   (** * Relational specification of the translation. *)
 
   (** ** Translation of expressions *)
@@ -602,7 +601,7 @@ with tr_lblstmts: Csyntax.labeled_statements -> labeled_statements -> Prop :=
     clear transl_stmt_meets_spec. intro.
     induction s; rewrite /transl_stmt; fold transl_stmt; fold transl_lblstmt; tac3.
     - iIntros. iPureIntro. constructor.
-    - apply (consequence _ _ _ _ _ (b1 e)); eauto. iIntros. iPureIntro. apply (tr_do _ _ a).
+    - apply (consequence _ _ _ _ _ (b1 e)); eauto. iIntros (v tr). iPureIntro. apply (tr_do _ _ tr).
     - iIntros "[% [% _]]". iPureIntro. constructor; auto.
     - iIntros "[% [% [% _]]]". iPureIntro. pose Heqb2. apply Is_true_eq_left in e0.
       apply andb_prop_elim in e0 as (P0&P1).

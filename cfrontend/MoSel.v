@@ -133,14 +133,15 @@ Fixpoint bind {X Y} (m : mon X) (f : X -> mon Y) : mon Y :=
   | trailOp _ g => trailOp tt (fun x => bind (g x) f)
   end.
 (* =end= *)
-  Notation "'let!' x ':=' e1 'in' e2" := (bind e1 (fun x => e2)) (x ident, at level 90).
+  Notation "'let!' x ':=' e1 'in' e2" := (bind e1 (fun x => e2)) (x name, at level 90).
 
-  Notation "'ret!' v" := (ret v) (v ident, at level 90).
+  Notation "'ret!' v" := (ret v) (v name, at level 90).
 (* =operators= *)
 Definition error {X} (e : Errors.errmsg) : mon X := errorOp e.
 Definition gensym (t : type) : mon ident := gensymOp t ret.
 Definition trail (_ : unit): mon (list (ident * type)) := trailOp tt ret.
 (* =end= *)
+
 
   Lemma lid : forall X Y (a : X) (f : X -> mon Y), bind (ret a) f = f a.
   Proof. auto. Qed.
