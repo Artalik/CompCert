@@ -283,15 +283,14 @@ Qed.
 Ltac Frame := eapply intro_true_r; eapply frame.
 
 (** Effects rules *)
-Lemma gensym_spec ty :
-  ⊢{{ emp }} gensym ty {{ l; IsFresh l }}.
+
+Lemma rule_gensym t : ⊢{{ emp }} gensym t {{ l; IsFresh l }}.
 Proof. simpl; auto. Qed.
 
-Lemma error_spec {X} (Q : X -> iProp) e :
-  ⊢{{ True }} error e {{ v; Q v }}.
+Lemma rule_error {X} (Q : X -> iProp) e : ⊢{{ True }} error e {{ v; Q v }}.
 Proof. auto. Qed.
 
-Lemma trail_spec  : ⊢{{ emp }} trail tt {{ _; emp  }}.
+Lemma rule_trail  : ⊢{{ emp }} trail tt {{ _; emp  }}.
 Proof. auto. Qed.
 
 End weakestpre_gensym.

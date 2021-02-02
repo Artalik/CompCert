@@ -287,8 +287,8 @@ Section SPEC.
     | |- bi_emp_valid ({{ _ }} bind _ (fun _ => _) {{ _; _ }}) =>
       eapply bind_spec; [> tac | intro; tac]
     | |- bi_emp_valid ({{ _ }} ret _ {{ _; ∃ _, _ }}) => eapply exists_spec; tac
-    | |- bi_emp_valid ({{ _ }} error _ {{ _; _ }}) => apply error_spec
-    | |- bi_emp_valid ({{ _ }} gensym _ {{ _; _ }}) => Frame; apply gensym_spec
+    | |- bi_emp_valid ({{ _ }} error _ {{ _; _ }}) => apply rule_error
+    | |- bi_emp_valid ({{ _ }} gensym _ {{ _; _ }}) => Frame; apply rule_gensym
     | H : (forall _ _, bi_emp_valid ({{ emp }} transl_valof _ _ {{ _; _}}))
       |- bi_emp_valid ({{ _ }} transl_valof _ _ {{ _; _ }}) =>
       Frame; apply H; tac
@@ -619,7 +619,7 @@ with tr_lblstmts: Csyntax.labeled_statements -> labeled_statements -> Prop :=
   Lemma transl_fun_meets_spec : forall s,
       ⊢ {{ emp }} transl_fun s {{ res; ⌜ tr_fun s res ⌝}}.
   Proof.
-    intro. unfold transl_fun. tac3. apply transl_stmt_meets_spec. Frame. eapply trail_spec.
+    intro. unfold transl_fun. tac3. apply transl_stmt_meets_spec. Frame. eapply rule_trail.
     iIntros "[_ %]". eauto.
     Qed.
 
