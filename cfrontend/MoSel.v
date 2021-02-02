@@ -205,7 +205,7 @@ Fixpoint wp {X} (e1 : mon X) (Q : X -> iProp) : iProp :=
   match e1 with
   | ret v => Q v
   | errorOp e => True
-  | gensymOp _ f => ∀ l, IsFresh l -∗ wp (f l) Q
+  | gensymOp _ f => ∀ l, & l -∗ wp (f l) Q
   | trailOp _ f => ∀ l, wp (f l) Q
   end.
 (* =end= *)
@@ -295,7 +295,7 @@ Ltac Frame := eapply intro_true_r; eapply frame.
 (** Effects rules *)
 
 (* =gensym_spec= *)
-Lemma rule_gensym t : ⊢{{ emp }} gensym t {{ l; IsFresh l }}.
+Lemma rule_gensym t : ⊢{{ emp }} gensym t {{ l; & l }}.
 (* =end= *)
 Proof. simpl; auto. Qed.
 
@@ -352,7 +352,7 @@ Module adequacy.
 
     Lemma adequacy_wp : forall m Q g_init g_res v,
         Pos.le (first_unused_ident tt) (gen_next g_init) ->
-        (heap_ctx (inject (gen_next g_init)) ⊢ wp m Q) ->
+        (&& (inject (gen_next g_init)) ⊢ wp m Q) ->
         eval m g_init = Errors.OK (g_res, v) ->
         (Q v) () (inject (gen_next g_res)).
     Proof.
@@ -382,7 +382,7 @@ Module adequacy.
 (* =adequacy_core= *)
 Lemma adequacy_core : forall e Q g_init v g_res H,
   Pos.le (first_unused_ident tt) (gen_next g_init) ->
-  (heap_ctx (inject (gen_next g_init)) ⊢ H) -> (⊢ {{ H }} e {{ v; Q v }}) ->
+  (&& (inject (gen_next g_init)) ⊢ H) -> (⊢ {{ H }} e {{ v; Q v }}) ->
   eval e g_init = Errors.OK (g_res, v) ->
   (Q v) () (inject (gen_next g_res)).
 (* =end= *)
@@ -403,7 +403,7 @@ Qed.
 
   Lemma adequacy_wp_pure {X} : forall (e : mon X) (Q : X -> Prop) g_init v g_res,
       Pos.le (first_unused_ident tt) (gen_next g_init) ->
-      (heap_ctx (inject (gen_next g_init)) ⊢ wp e (fun v =>  ⌜Q v⌝)) ->
+      (&& (inject (gen_next g_init)) ⊢ wp e (fun v =>  ⌜Q v⌝)) ->
       eval e g_init = Errors.OK (g_res, v) ->
       Q v.
   Proof.
@@ -413,7 +413,7 @@ Qed.
 
   Lemma adequacy_pure {X} : forall (e : mon X) (Q : X -> Prop) g_init v g_res H,
       Pos.le (first_unused_ident tt) (gen_next g_init) ->
-      (heap_ctx (inject (gen_next g_init)) ⊢ H) -> (⊢ {{ H }} e {{ v; ⌜ Q v ⌝}}) ->
+      (&& (inject (gen_next g_init)) ⊢ H) -> (⊢ {{ H }} e {{ v; ⌜ Q v ⌝}}) ->
       eval e g_init = Errors.OK (g_res, v) ->
       Q v.
   Proof.

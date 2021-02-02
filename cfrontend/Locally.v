@@ -202,7 +202,7 @@ Proof.
 Qed.
 
 Lemma locally_set {A} : forall Q (le : t A) t v,
-    ⊢ IsFresh t -∗ locally le (fun le' => Q le') -∗ locally (set t v le) (fun le' => Q le') ∗ IsFresh t.
+    ⊢ & t -∗ locally le (fun le' => Q le') -∗ locally (set t v le) (fun le' => Q le') ∗ & t.
 Proof.
   unfold_locally. red in H2. clear H3 H1. subst. repeat red. intros. destruct a. clear H0.
   exists (hheap_ctx h), h, nil. split; auto. repeat split; auto.
@@ -215,7 +215,7 @@ Proof.
 Qed.
 
 Lemma locally_lookup {A} : forall le t (v : A),
-    ⊢ IsFresh t -∗ locally (set t v le) (λ le', ⌜le' ! t = Some v⌝).
+    ⊢ & t -∗ locally (set t v le) (λ le', ⌜le' ! t = Some v⌝).
 Proof.
   unfold_locally. intros. red. erewrite <- H0. apply gss. rewrite H. apply H2. apply in_eq.
 Qed.

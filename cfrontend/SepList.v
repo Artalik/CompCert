@@ -299,14 +299,14 @@ Definition hpure (P : Prop) : hprop := fun _ => P.
   Ltac inv H := inversion H; clear H; subst.
 
   Local Open Scope bi_scope.
-  Local Notation "'@' l" :=
+  Local Notation "'&' l" :=
     (single l) (at level 20) : bi_scope.
 
-  Local Notation "'@@' l" :=
+  Local Notation "'&&' l" :=
     (heap_ctx l) (at level 20) : bi_scope.
 
 (* =neq= *)
-Lemma singleton_neq : forall t t', ⊢ @ t -∗ @ t' -∗ ⌜t ≠ t'⌝.
+Lemma singleton_neq : forall t t', ⊢ & t -∗ & t' -∗ ⌜t ≠ t'⌝.
 (* =end= *)
   Proof.
     MonPred.unseal. split. MonPred.unseal. repeat red. intros.
@@ -353,7 +353,7 @@ Lemma singleton_neq : forall t t', ⊢ @ t -∗ @ t' -∗ ⌜t ≠ t'⌝.
     intros. split; auto.
   Qed.
 
-  Lemma soundness (Φ : monPred biInd hpropList) h : (⊢heap_ctx h -∗ Φ) -> Φ () h.
+  Lemma soundness (Φ : monPred biInd hpropList) h : (⊢&& h -∗ Φ) -> Φ () h.
   Proof.
     MonPred.unseal=> -[H]. repeat red in H.
     pose (e := H () ∅).
@@ -366,7 +366,7 @@ Lemma singleton_neq : forall t t', ⊢ @ t -∗ @ t' -∗ ⌜t ≠ t'⌝.
       apply P in H2. apply in_app_iff in H2 as [H2|H2]; auto. inv H2.
   Qed.
 
-  Lemma completeness (Φ : monPred biInd hpropList) h : Φ () h -> (⊢@@ h -∗ Φ).
+  Lemma completeness (Φ : monPred biInd hpropList) h : Φ () h -> (⊢&& h -∗ Φ).
   Proof.
     MonPred.unseal. split. MonPred.unseal. intros. repeat red. intros.
     exists emp. exists x; exists heap_empty. repeat split; auto with list_scope.
@@ -379,7 +379,7 @@ Lemma singleton_neq : forall t t', ⊢ @ t -∗ @ t' -∗ ⌜t ≠ t'⌝.
 
   Definition iProp := monPred biInd hpropList.
 (* =equivalence= *)
-Lemma equivalence (Φ : iProp) h : Φ () h ↔ (⊢ @@ h -∗ Φ).
+Lemma equivalence (Φ : iProp) h : Φ () h ↔ (⊢ && h -∗ Φ).
 (* =end= *)
   Proof.
     split.
@@ -428,5 +428,11 @@ Ltac inversion_star h P :=
   end.
 
 Open Scope bi_scope.
+
+Notation "'&' l" :=
+  (single l) (at level 20) : bi_scope.
+
+Notation "'&&' l" :=
+  (heap_ctx l) (at level 20) : bi_scope.
 
 Definition IsFresh {ident} l : monPred biInd (@hpropList ident) := single l.
