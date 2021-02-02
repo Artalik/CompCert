@@ -294,10 +294,14 @@ Section hprop.
   Ltac inv H := inversion H; clear H; subst.
 
   Local Open Scope bi_scope.
-  Local Notation "'IsFresh' l" :=
+
+  Local Notation "'&' l" :=
     (single l) (at level 20) : bi_scope.
 
-  Lemma singleton_neq : forall t t', ⊢ IsFresh t -∗ IsFresh t' -∗ ⌜t ≠ t'⌝.
+  Local Notation "'&&' l" :=
+    (heap_ctx l) (at level 20) : bi_scope.
+
+  Lemma singleton_neq : forall t t', ⊢ & t -∗ & t' -∗ ⌜t ≠ t'⌝.
   Proof.
     MonPred.unseal. split. MonPred.unseal. repeat red. intros.
     exists emp, heap_empty, heap_empty. repeat split; auto with list_scope. clear H0. destruct a.
@@ -343,7 +347,7 @@ Section hprop.
     intros. split; auto.
   Qed.
 
-  Lemma soundness (Φ : monPred biInd hpropList) h : (⊢heap_ctx h -∗ Φ) -> Φ () h.
+  Lemma soundness (Φ : monPred biInd hpropList) h : (⊢&& h -∗ Φ) -> Φ () h.
   Proof.
     MonPred.unseal=> -[H]. repeat red in H.
     pose (e := H () ∅).
@@ -356,7 +360,7 @@ Section hprop.
       apply P in H2. apply in_app_iff in H2 as [H2|H2]; auto. inv H2.
   Qed.
 
-  Lemma completeness (Φ : monPred biInd hpropList) h : Φ () h -> (⊢heap_ctx h -∗ Φ).
+  Lemma completeness (Φ : monPred biInd hpropList) h : Φ () h -> (⊢&& h -∗ Φ).
   Proof.
     MonPred.unseal. split. MonPred.unseal. intros. repeat red. intros.
     exists emp. exists x; exists heap_empty. repeat split; auto with list_scope.
@@ -367,7 +371,7 @@ Section hprop.
     left; auto. intro. apply in_app_iff in H2 as [H2|H2]. auto. inv H2.
   Qed.
 
-  Lemma equivalence (Φ : monPred biInd hpropList) h : Φ () h <-> (⊢heap_ctx h -∗ Φ).
+  Lemma equivalence (Φ : monPred biInd hpropList) h : Φ () h <-> (⊢&& h -∗ Φ).
   Proof.
     split.
     apply completeness.
@@ -413,4 +417,10 @@ Ltac inversion_star h P :=
 
 Open Scope bi_scope.
 
-Definition IsFresh {type} l : monPred biInd (@hpropList type) := single l.
+Notation "'&' l" :=
+  (single l) (at level 20) : bi_scope.
+
+Notation "'&&' l" :=
+  (heap_ctx l) (at level 20) : bi_scope.
+
+Definition IsFresh {ident} l : monPred biInd (@hpropList ident) := single l.

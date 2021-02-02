@@ -37,10 +37,9 @@ Section SPEC.
 
   Definition dest_below (dst: destination) : iProp :=
     match dst with
-    | For_set sd => IsFresh (sd_temp sd)
+    | For_set sd => & (sd_temp sd)
     | _ => emp
     end.
-
 
   Definition final (dst: destination) (a: expr) : list statement :=
     match dst with
@@ -53,7 +52,7 @@ Section SPEC.
   Definition tr_rvalof (ty : type) (e1 : expr) (ls : list statement) (e : expr) : iProp :=
     if type_is_volatile ty
     then
-      (∃ t, ⌜ ls = make_set t e1 :: nil /\ e = Etempvar t ty⌝ ∗ IsFresh t)%I
+      (∃ t, ⌜ ls = make_set t e1 :: nil /\ e = Etempvar t ty⌝ ∗ & t)%I
     else
       ⌜ls =nil /\ e = e1⌝%I.
 
@@ -174,17 +173,18 @@ Section SPEC.
      end
     | Csyntax.Eassign e1 e2 ty =>
       match dst with
+      | For_val | For_set _ =>
+      ∃ sl2 a2 sl3 a3 t,
+       tr_expr le For_val e1 sl2 a2  ∗
+       tr_expr le For_val e2 sl3 a3  ∗
+       & t ∗
+       dest_below dst ∗
+       ⌜ sl = sl2 ++ sl3 ++ Sset t (Ecast a3 (Csyntax.typeof e1)) :: make_assign a2 (Etempvar t (Csyntax.typeof e1)) :: final dst (Etempvar t (Csyntax.typeof e1)) /\ a = Etempvar t (Csyntax.typeof e1)⌝
       | For_effects =>
         ∃ sl2 a2 sl3 a3,
        tr_expr le For_val e1 sl2 a2  ∗
        tr_expr le For_val e2 sl3 a3  ∗
        ⌜ sl = sl2 ++ sl3 ++ make_assign a2 a3 :: nil ⌝
-    | _ =>
-      ∃ sl2 a2 sl3 a3 t,
-       tr_expr le For_val e1 sl2 a2  ∗
-       tr_expr le For_val e2 sl3 a3  ∗
-       IsFresh t ∗ dest_below dst ∗
-       ⌜ sl = sl2 ++ sl3 ++ Sset t (Ecast a3 (Csyntax.typeof e1)) :: make_assign a2 (Etempvar t (Csyntax.typeof e1)) :: final dst (Etempvar t (Csyntax.typeof e1)) /\ a = Etempvar t (Csyntax.typeof e1)⌝
      end
     | Csyntax.Eassignop ope e1 e2 tyres ty =>
       match dst with
@@ -199,7 +199,7 @@ Section SPEC.
        tr_expr le For_val e1 sl2 a2  ∗
        tr_expr le For_val e2 sl3 a3  ∗
        tr_rvalof (Csyntax.typeof e1) a2 sl4 a4  ∗
-       IsFresh t ∗
+       & t ∗
        ⌜ sl = sl2 ++ sl3 ++ sl4 ++ Sset t (Ecast (Ebinop ope a4 a3 tyres) (Csyntax.typeof e1)) :: make_assign a2 (Etempvar t (Csyntax.typeof e1)) :: final dst (Etempvar t (Csyntax.typeof e1))
        /\ a = Etempvar t (Csyntax.typeof e1) ⌝
      end
@@ -213,7 +213,7 @@ Section SPEC.
        ⌜ sl = sl2 ++ sl3 ++ make_assign a2 (transl_incrdecr id a3 (Csyntax.typeof e1)) :: nil ⌝
     | _ =>
       dest_below dst ∗
-      ∃ t, IsFresh t  ∗
+      ∃ t, & t  ∗
       ⌜ sl = sl2 ++ make_set t a2 ::make_assign a2 (transl_incrdecr id (Etempvar t (Csyntax.typeof e1)) (Csyntax.typeof e1)) :: final dst (Etempvar t (Csyntax.typeof e1))
            /\ a = Etempvar t (Csyntax.typeof e1)⌝
      end
@@ -233,7 +233,7 @@ Section SPEC.
        ⌜  sl = sl2 ++ sl3 ++ Scall None a2 al3 :: nil ⌝
     | _ =>
       dest_below dst ∗ ∃ sl2 a2 sl3 al3 t,
-       IsFresh t ∗
+       & t ∗
         tr_expr le For_val e1 sl2 a2  ∗
         tr_exprlist le el2 sl3 al3  ∗
         ⌜ sl = sl2 ++ sl3 ++ Scall (Some t) a2 al3 :: final dst (Etempvar t ty) /\
@@ -249,7 +249,7 @@ Section SPEC.
     | _ =>
       dest_below dst ∗ ∃ sl2 al2 t,
        tr_exprlist le el sl2 al2  ∗
-       IsFresh t  ∗
+       & t  ∗
        ⌜ sl = sl2 ++ Sbuiltin (Some t) ef tyargs al2 :: final dst (Etempvar t ty) /\
        a = Etempvar t ty⌝
      end
