@@ -131,9 +131,9 @@ Module gensym.
     | trailOp _ g => trailOp tt (fun x => bind (g x) f)
     end.
 
-  Notation "'let!' x ':=' e1 'in' e2" := (bind e1 (fun x => e2)) (x ident, at level 90).
+  Notation "'let!' x ':=' e1 'in' e2" := (bind e1 (fun x => e2)) (x name, at level 90).
 
-  Notation "'ret!' v" := (ret v) (v ident, at level 90).
+  Notation "'ret!' v" := (ret v) (v name, at level 90).
 
   Definition error {X} (e : Errors.errmsg) : mon X := errorOp e.
   Definition gensym (t : type) : mon ident := gensymOp t ret.
