@@ -105,7 +105,10 @@ Module gensym.
                                            gen_trail: list (ident * type)
                                          }.
 
-  Definition initial_state : generator := mkgenerator 1%positive nil.
+  Parameter first_unused_ident : unit -> ident.
+
+  Definition initial_generator (x : unit) : generator :=
+    mkgenerator (first_unused_ident x) nil.
 
 
   Inductive mon (X : Type) : Type :=
@@ -174,7 +177,7 @@ Module gensym.
   end.
 
 Definition run {X} (m: mon X): res X :=
-  match eval m initial_state with
+  match eval m (initial_generator tt) with
   | OK (_, v) => OK v
   | Error e => Error e
   end.
@@ -297,85 +300,108 @@ Module adequacy.
   Import Errors.
   Export weakestpre_gensym.
 
-  Definition inject n := List.map Pos.of_nat (seq 1 (pred (Pos.to_nat n))).
 
-  Lemma inject_last : forall n, inject (Pos.succ n) = inject n ++ [n].
+  Definition inject n :=
+    List.map Pos.of_nat
+             (seq (Pos.to_nat (first_unused_ident ())) (Pos.to_nat n - Pos.to_nat (first_unused_ident ()))).
+
+  Lemma inject_last : forall n, Pos.le (first_unused_ident ()) n -> inject (Pos.succ n) = inject n ++ [n].
   Proof.
-    intros. unfold inject. rewrite Pos2Nat.inj_succ. rewrite <- pred_Sn.
-    rewrite <- (Pos2Nat.id n).
+    intros n lt. unfold inject. rewrite <- (Pos2Nat.id n).
     assert (forall (n : nat), [Pos.of_nat n] = Pos.of_nat n :: map Pos.of_nat nil) by auto.
     rewrite H. rewrite <- map_cons. rewrite <- map_app. f_equal.
     rewrite Pos2Nat.id. assert (forall (n : nat), [n] = seq n 1) by auto. rewrite H0.
-    assert (forall (n : nat), n > 0 ->1 + (Init.Nat.pred n) = n). intros. lia.
-    pose (Pos2Nat.is_pos n). apply H1 in l.
-    rewrite <- l. rewrite <- seq_app. f_equal. lia.
+    assert ((Pos.to_nat (first_unused_ident ())) + (Pos.to_nat n - Pos.to_nat (first_unused_ident ())) = Pos.to_nat n) by lia.
+    rewrite <- H1 at 2. rewrite <- seq_app. f_equal. lia.
   Qed.
 
-  Lemma next_disjoint : forall n, list_disjoint (inject n) [n].
+  Lemma next_disjoint : forall n, Pos.le (first_unused_ident ()) n -> list_disjoint (inject n) [n].
   Proof.
-    intros n x y P0 P1 eq. subst. inversion P1. subst.
+    intros n P x y P0 P1 eq. subst. inversion P1. subst.
     - unfold inject in P0. apply Coqlib.list_in_map_inv in P0. destruct P0 as [x [P0 P2]].
       apply in_seq in P2. destruct P2. lia.
     - inversion H.
   Qed.
 
-  Lemma adequacy_wp {X} : forall (e : mon X) (Q : X -> iProp) (s s' : generator) v,
-      (heap_ctx (inject (gen_next s)) ⊢ wp e Q) ->
-      eval e s = Errors.OK (s', v) ->
-      (Q v) () (inject (gen_next s')).
+  Lemma unused_nil : inject (first_unused_ident ()) = nil.
   Proof.
-    fix e 1.
-    destruct e0; intros.
-    - inversion H0; subst. apply soundness. iApply H.
-    - inversion H0.
-    - simpl in *. eapply e.
-      2 : apply H0.
-      + iIntros "HA". simpl. rewrite inject_last.
-        iDestruct (heap_ctx_split with "HA") as "[HA HB]". apply next_disjoint.
-        iDestruct (H with "HA") as "HA".
-        iApply ("HA" with "HB").
-    - simpl in *. eapply e; eauto. iIntros "HA". iApply (H with "HA").
+    unfold inject. rewrite PeanoNat.Nat.sub_diag. simpl. reflexivity.
   Qed.
 
-  Lemma adequacy_init {X} : forall (e : mon X) (Q : X -> iProp) s' v,
-      (⊢ wp e Q) ->
-      eval e initial_state = Errors.OK (s', v) ->
-      (Q v) () (inject (gen_next s')).
-  Proof. intros. eapply adequacy_wp; eauto. auto. Qed.
+  Section Eval_Adequacy.
+    Variable X: Type.
+    Implicit Type m: mon X.
+    Implicit Type P: iProp.
+    Implicit Type Q: X -> iProp.
+    Implicit Type v: X.
 
-  Lemma adequacy_core {X} : forall (e : mon X) (Q : X -> iProp) s v s' H,
-      (heap_ctx (inject (gen_next s)) ⊢ H) -> (⊢ {{ H }} e {{ v; Q v }}) ->
-      eval e s = Errors.OK (s', v) ->
-      (Q v) () (inject (gen_next s')).
+    Lemma adequacy_wp : forall m Q g_init g_res v,
+        Pos.le (first_unused_ident tt) (gen_next g_init) ->
+        (heap_ctx (inject (gen_next g_init)) ⊢ wp m Q) ->
+        eval m g_init = Errors.OK (g_res, v) ->
+        (Q v) () (inject (gen_next g_res)).
+    Proof.
+      fix ind 1.
+      destruct m; intros.
+      - inversion H1; subst. apply soundness. iApply H0.
+      - inversion H1.
+      - simpl in *. eapply ind.
+        3 : apply H1.
+        + simpl. lia.
+        + iIntros "HA". simpl. rewrite inject_last; auto.
+          iDestruct (heap_ctx_split with "HA") as "[HA HB]". apply next_disjoint; auto.
+          iDestruct (H0 with "HA") as "HA".
+          iApply ("HA" with "HB").
+      - simpl in *. eapply ind; eauto. iIntros "HA". iApply (H0 with "HA").
+    Qed.
+
+    Lemma adequacy_init : forall e Q g v,
+        (⊢ wp e Q) ->
+        eval e (initial_generator tt) = Errors.OK (g, v) ->
+        (Q v) () (inject (gen_next g)).
+    Proof.
+      intros. eapply adequacy_wp; eauto. simpl. lia.
+      rewrite unused_nil. auto.
+    Qed.
+
+  Lemma adequacy_core : forall e Q g_init v g_res H,
+      Pos.le (first_unused_ident tt) (gen_next g_init) ->
+      (heap_ctx (inject (gen_next g_init)) ⊢ H) -> (⊢ {{ H }} e {{ v; Q v }}) ->
+      eval e g_init = Errors.OK (g_res, v) ->
+      (Q v) () (inject (gen_next g_res)).
   Proof.
-    intros. eapply adequacy_wp; eauto. iIntros "HA". iDestruct (H0 with "HA") as "HA".
-    iApply (H1 with "HA"); auto.
+    intros. eapply adequacy_wp; eauto. iIntros "HA". iDestruct (H1 with "HA") as "HA".
+    iApply (H2 with "HA"); auto.
   Qed.
 
-  Lemma adequacy_triple_init {X} : forall (e : mon X) (Q : X -> iProp) v s' H,
+  Lemma adequacy_triple_init : forall e Q v g H,
       (⊢ H) -> (⊢ {{ H }} e {{ v; Q v }}) ->
-      eval e initial_state = Errors.OK (s', v) ->
-      (Q v) () (inject (gen_next s')).
+      eval e (initial_generator tt) = Errors.OK (g, v) ->
+      (Q v) () (inject (gen_next g)).
   Proof.
     intros. eapply adequacy_init; eauto. iApply H1; eauto.
   Qed.
 
-  Lemma adequacy_wp_pure {X} : forall (e : mon X) (Q : X -> Prop) s v s',
-      (heap_ctx (inject (gen_next s)) ⊢ wp e (fun v =>  ⌜Q v⌝)) ->
-      eval e s = Errors.OK (s', v) ->
+  End Eval_Adequacy.
+
+  Lemma adequacy_wp_pure {X} : forall (e : mon X) (Q : X -> Prop) g_init v g_res,
+      Pos.le (first_unused_ident tt) (gen_next g_init) ->
+      (heap_ctx (inject (gen_next g_init)) ⊢ wp e (fun v =>  ⌜Q v⌝)) ->
+      eval e g_init = Errors.OK (g_res, v) ->
       Q v.
   Proof.
-    intros. apply (soundness_pure (inject (gen_next s'))). iApply completeness.
-    eapply (adequacy_wp _ _ _ _ _ H H0).
+    intros. apply (soundness_pure (inject (gen_next g_res))). iApply completeness.
+    eapply (adequacy_wp _ _ _ _ _ _ H H0 H1).
   Qed.
 
-  Lemma adequacy_pure {X} : forall (e : mon X) (Q : X -> Prop) s v s' H,
-      (heap_ctx (inject (gen_next s)) ⊢ H) -> (⊢ {{ H }} e {{ v; ⌜ Q v ⌝}}) ->
-      eval e s = Errors.OK (s', v) ->
+  Lemma adequacy_pure {X} : forall (e : mon X) (Q : X -> Prop) g_init v g_res H,
+      Pos.le (first_unused_ident tt) (gen_next g_init) ->
+      (heap_ctx (inject (gen_next g_init)) ⊢ H) -> (⊢ {{ H }} e {{ v; ⌜ Q v ⌝}}) ->
+      eval e g_init = Errors.OK (g_res, v) ->
       Q v.
   Proof.
-    intros. eapply adequacy_wp_pure; eauto. iIntros "HA". iDestruct (H0 with "HA") as "HA".
-    iDestruct (H1 with "HA") as "$".
+    intros. eapply adequacy_wp_pure; eauto. iIntros "HA". iDestruct (H1 with "HA") as "HA".
+    iDestruct (H2 with "HA") as "$".
   Qed.
 
   Section Adequacy.
@@ -391,9 +417,10 @@ Module adequacy.
   Proof.
     intros m.
     unfold run. intros.
-    destruct (eval m initial_state) eqn:H2.
+    destruct (eval m (initial_generator tt)) eqn:H2.
     destruct p. inversion H0. subst.
     eapply adequacy_pure; eauto.
+    simpl. lia. rewrite unused_nil.
     iIntros "_".
     iApply H. auto.
     inversion H0.
