@@ -108,7 +108,7 @@ Definition hand (H1 H2:hprop):hprop :=
     fun h => h = ∅.
 
 (* =hsingle= *)
-Definition hsingle l : hprop := fun h =>  h ≡ [l].
+Definition hsingle t : hprop := fun h =>  h ≡ [t].
 (* =end= *)
   Definition hheap_ctx (ctx : list ident) : hprop := fun h => h ≡ ctx.
 
