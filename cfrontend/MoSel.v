@@ -295,17 +295,17 @@ Ltac Frame := eapply intro_true_r; eapply frame.
 (** Effects rules *)
 
 (* =gensym_spec= *)
-Lemma gensym_spec t : ⊢{{ emp }} gensym t {{ l; IsFresh l }}.
+Lemma rule_gensym t : ⊢{{ emp }} gensym t {{ l; IsFresh l }}.
 (* =end= *)
 Proof. simpl; auto. Qed.
 
 (* =error_spec= *)
-Lemma error_spec {X} (Q : X -> iProp) e : ⊢{{ True }} error e {{ v; Q v }}.
+Lemma rule_error {X} (Q : X -> iProp) e : ⊢{{ True }} error e {{ v; Q v }}.
 (* =end= *)
 Proof. auto. Qed.
 
 (* =trail_spec= *)
-Lemma trail_spec  : ⊢{{ emp }} trail tt {{ _; emp  }}.
+Lemma rule_trail  : ⊢{{ emp }} trail tt {{ _; emp  }}.
 (* =end= *)
 Proof. auto. Qed.
 
