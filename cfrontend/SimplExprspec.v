@@ -109,9 +109,14 @@ Fixpoint tr_expr (*[*)(le : temp_env)(*]*) (dst : destination) (*[*)(e : Csyntax
        tr_expr le For_val e2 sl3 a3  ∗
        ⌜ sl = sl2 ++ sl3 ++ final dst (Ebinop ope a2 a3 ty) /\ a = Ebinop ope a2 a3 ty ⌝
      | Csyntax.Ecast e1 ty =>
-       dest_below dst ∗
-       ∃ sl2 a2, tr_expr le For_val e1 sl2 a2  ∗
-       ⌜ sl = sl2 ++ final dst (Ecast a2 ty) /\ a = Ecast a2 ty ⌝
+       match dst with
+       | For_val | For_set _ =>
+          dest_below dst ∗
+          ∃ sl2 a2, tr_expr le For_val e1 sl2 a2  ∗
+          ⌜ sl = sl2 ++ final dst (Ecast a2 ty) /\ a = Ecast a2 ty ⌝
+       | For_effects =>
+         tr_expr le For_effects e1 sl a
+       end
      | Csyntax.Eseqand e1 e2 ty =>
        match dst with
        | For_val =>
@@ -379,7 +384,9 @@ Fixpoint tr_expr (*[*)(le : temp_env)(*]*) (dst : destination) (*[*)(e : Csyntax
     - iFrame. repeat iExists _. iSplitL "HF"; eauto. iSplitL "HC"; eauto.
       destruct dst; simpl; simpl_list; auto. rewrite <- app_assoc. eauto.
     - iFrame; repeat iExists _; destruct dst; simpl; simpl_list; eauto.
-    - repeat iExists _. iSplitL "HG"; auto. iDestruct ("HC" with "[HE]") as "HA"; auto.
+    - iApply wp_consequence. iApply H; auto. iIntros; norm_all.
+    - iFrame. repeat iExists _. iSplitL "HC"; eauto.
+    -repeat iExists _. iSplitL "HG"; auto. iDestruct ("HC" with "[HE]") as "HA"; auto.
     - repeat iExists _. iSplitL "HF"; eauto.
     - repeat iExists _. iSplitL "HE"; eauto. iSplitL; eauto. iApply ("HC" with "[HH]"); auto.
     - repeat iExists _. iSplitL "HG"; auto. iSplitL; eauto. iApply ("HC" with "[HE]"); auto.
