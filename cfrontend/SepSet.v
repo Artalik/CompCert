@@ -12,46 +12,13 @@ Definition pred_impl {A} (P Q : A -> Prop) := fun x => P x -> Q x.
 Notation "P ==> Q" := (pred_incl P Q).
 
 Section hprop.
-  Context {X : Type}.
-  Context {eqX : EqDecision X}.
-  Context {count_X : Countable X}.
-
-  Definition heap : Type := gmap X unit.
-
-  (* Properties on heap *)
-  Instance heap_union_empty_l : LeftId (=@{heap}) ∅ (∪) := _.
-  Instance heap_union_empty_r : RightId (=@{heap}) ∅ (∪) := _.
-  Instance heap_union_assoc : base.Assoc (=@{heap}) (∪).
-  Proof.
-    intros m1 m2 m3. unfold base.union, map_union, union_with, map_union_with.
-    apply (merge_assoc _). intros i.
-    unfold heap in m1. unfold heap in m2. unfold heap in m3.
-      by destruct (m1 !! i), (m2 !! i), (m3 !! i).
-  Qed.
-
-  Definition heap_union_comm (h1 h2 : heap) := map_union_comm h1 h2.
-
-  Lemma heap_disjoint_union_l_l : forall (h1 h2 h3 :heap) , h1 ∪ h2 ##ₘ h3 -> h1 ##ₘ h3.
-  Proof.
-    intros. apply map_disjoint_union_l in H as (P0&P1). assumption.
-  Qed.
-
-  Lemma heap_disjoint_union_l_r : forall (h1 h2 h3 :heap) , h1 ∪ h2 ##ₘ h3 -> h2 ##ₘ h3.
-  Proof.
-    intros. apply map_disjoint_union_l in H as (P0&P1). assumption.
-  Qed.
-
-  Lemma heap_disjoint_union_r_r : forall (h1 h2 h3 :heap) , h1 ##ₘ h2 ∪ h3 -> h1 ##ₘ h3.
-  Proof.
-    intros. apply map_disjoint_union_r in H as (P0&P1). assumption.
-  Qed.
-
-  Lemma heap_disjoint_union_r_l : forall (h1 h2 h3 :heap) , h1 ##ₘ h2 ∪ h3 -> h1 ##ₘ h2.
-  Proof.
-    intros. apply map_disjoint_union_r in H as (P0&P1). assumption.
-  Qed.
-
   (* Operators *)
+(* =hprop= *)
+Context {X : Type}.
+Context {eqX : EqDecision X}.
+Context {count_X : Countable X}.
+Definition heap : Type := gmap X unit.
+(* =end= *)
 
   Definition hprop := heap -> Prop.
 
@@ -62,18 +29,25 @@ Section hprop.
 
   Definition hempty : hprop := fun h => h = ∅.
 
-  Definition hsingle l : hprop :=
-    fun h =>  h = {[l := tt]}.
+(* =hsingle= *)
+Definition hsingle l : hprop :=
+  fun h =>  h = {[l := tt]}.
+(* =end= *)
 
   Definition hheap_ctx (ctx : heap) : hprop := fun h => h = ctx.
 
-  Definition hstar (H1 H2 : hprop) : hprop :=
-    fun h => exists h1 h2, H1 h1 /\ H2 h2 /\ (h1 ##ₘ h2) /\ h = h1 ∪ h2.
+(* =hstar= *)
+Definition hstar (H1 H2 : hprop) : hprop :=
+  fun h => exists h1 h2, H1 h1 /\ H2 h2 /\ (h1 ##ₘ h2) /\ h = h1 ∪ h2.
+(* =end= *)
+(* =hquantifier= *)
+Definition hexists {A} (J : A -> hprop) : hprop := fun h => exists x, J x h.
+Definition hforall {A} (f : A -> hprop) : hprop := fun h => forall a, f a h.
+(* =end= *)
 
-  Definition hexists {A} (J : A -> hprop) : hprop := fun h => exists x, J x h.
-  Definition hforall {A} (f : A -> hprop) : hprop := fun h => forall a, f a h.
-
-  Definition hpure (P : Prop) : hprop := fun _ => P.
+(* =hpure= *)
+Definition hpure (P : Prop) : hprop := fun _ => P.
+(* =end= *)
 
   Definition hpure_aff (P:Prop) : hprop := fun h => P /\ hempty h.
 
@@ -111,6 +85,38 @@ Section hprop.
 
   Local Notation "\Top" := htop.
 
+  (* Properties on heap *)
+  Instance heap_union_empty_l : LeftId (=@{heap}) ∅ (∪) := _.
+  Instance heap_union_empty_r : RightId (=@{heap}) ∅ (∪) := _.
+  Instance heap_union_assoc : base.Assoc (=@{heap}) (∪).
+  Proof.
+    intros m1 m2 m3. unfold base.union, map_union, union_with, map_union_with.
+    apply (merge_assoc _). intros i.
+    unfold heap in m1. unfold heap in m2. unfold heap in m3.
+      by destruct (m1 !! i), (m2 !! i), (m3 !! i).
+  Qed.
+
+  Definition heap_union_comm (h1 h2 : heap) := map_union_comm h1 h2.
+
+  Lemma heap_disjoint_union_l_l : forall (h1 h2 h3 :heap) , h1 ∪ h2 ##ₘ h3 -> h1 ##ₘ h3.
+  Proof.
+    intros. apply map_disjoint_union_l in H as (P0&P1). assumption.
+  Qed.
+
+  Lemma heap_disjoint_union_l_r : forall (h1 h2 h3 :heap) , h1 ∪ h2 ##ₘ h3 -> h2 ##ₘ h3.
+  Proof.
+    intros. apply map_disjoint_union_l in H as (P0&P1). assumption.
+  Qed.
+
+  Lemma heap_disjoint_union_r_r : forall (h1 h2 h3 :heap) , h1 ##ₘ h2 ∪ h3 -> h1 ##ₘ h3.
+  Proof.
+    intros. apply map_disjoint_union_r in H as (P0&P1). assumption.
+  Qed.
+
+  Lemma heap_disjoint_union_r_l : forall (h1 h2 h3 :heap) , h1 ##ₘ h2 ∪ h3 -> h1 ##ₘ h2.
+  Proof.
+    intros. apply map_disjoint_union_r in H as (P0&P1). assumption.
+  Qed.
 
   Declare Scope heap_scope.
 
@@ -245,7 +251,9 @@ Section hprop.
   Local Notation "'&' l" :=
     (single l) (at level 20) : bi_scope.
 
-  Lemma singleton_neq : forall l l', ⊢ & l -∗ & l' -∗ ⌜l ≠ l'⌝.
+(* =neq= *)
+Lemma singleton_neq : forall l l', ⊢ & l -∗ & l' -∗ ⌜l ≠ l'⌝.
+(* =end= *)
   Proof.
     MonPred.unseal. split. MonPred.unseal. repeat red. intros. destruct i. destruct a. clear H0.
     inv H. exists emp, heap_empty, heap_empty. repeat split; auto with heap_scope.
@@ -307,7 +315,9 @@ Section hprop.
     apply map_disjoint_empty_r.
   Qed.
 
-  Lemma equivalence (Φ : iProp) h : Φ () h <-> (⊢&& h -∗ Φ).
+(* =equivalence= *)
+Lemma equivalence (Φ : iProp) h : Φ () h <-> (⊢&& h -∗ Φ).
+(* =end *)
   Proof.
     split.
     apply completeness.
@@ -338,7 +348,9 @@ Notation "'heap_empty'" := (∅ : heap).
 
 Notation "'\[]'" := (hempty) (at level 0).
 
+(* =hpure_notation= *)
 Notation "\[ P ]" := (hpure P) (at level 0, P at level 99, format "\[ P ]").
+(* =end= *)
 
 Notation "H1 '\*' H2" := (hstar H1 H2) (at level 41, right associativity).
 
