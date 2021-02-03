@@ -315,32 +315,21 @@ Module adequacy.
   Import Errors.
   Export weakestpre_gensym.
 
-  Fixpoint seqPos start len : heap :=
-    match len with
-    | O => ∅
-    | S n => <[start := tt]>(seqPos (start - 1)%positive n)
-    end.
-
   Definition inject_aux n :=
     List.map Pos.of_nat
-             (seq (Pos.to_nat (first_unused_ident ())) (Pos.to_nat n - Pos.to_nat (first_unused_ident ()))).
+             (seq (Pos.to_nat (first_unused_ident ()))
+                  (Pos.to_nat n - Pos.to_nat (first_unused_ident ()))).
 
-  (* Lemma next_disjoint : forall n, (inject n) ##ₘ {[n := tt]}. *)
-  (* Proof. *)
-  (*   intro. apply map_disjoint_singleton_r. apply ord_disjoint. auto. *)
-  (* Qed. *)
-
-  (* Definition inject n := *)
-  (*   List.map Pos.of_nat *)
-  (*            (seq (Pos.to_nat (first_unused_ident ())) (Pos.to_nat n - Pos.to_nat (first_unused_ident ()))). *)
-
-  Lemma inject_last : forall n, Pos.le (first_unused_ident ()) n -> inject_aux (Pos.succ n) = inject_aux n ++ [n].
+  Lemma inject_last : forall n,
+      Pos.le (first_unused_ident ()) n -> inject_aux (Pos.succ n) = inject_aux n ++ [n].
   Proof.
     intros n lt. unfold inject_aux. rewrite <- (Pos2Nat.id n).
     assert (forall (n : nat), [Pos.of_nat n] = Pos.of_nat n :: map Pos.of_nat nil) by auto.
     rewrite H. rewrite <- map_cons. rewrite <- map_app. f_equal.
     rewrite Pos2Nat.id. assert (forall (n : nat), [n] = seq n 1) by auto. rewrite H0.
-    assert ((Pos.to_nat (first_unused_ident ())) + (Pos.to_nat n - Pos.to_nat (first_unused_ident ())) = Pos.to_nat n) by lia.
+    assert ((Pos.to_nat (first_unused_ident ())) +
+            (Pos.to_nat n - Pos.to_nat (first_unused_ident ()))
+            = Pos.to_nat n) by lia.
     rewrite <- H1 at 2. rewrite <- seq_app. f_equal. lia.
   Qed.
 
@@ -358,51 +347,27 @@ Module adequacy.
     unfold inject_aux. rewrite PeanoNat.Nat.sub_diag. simpl. reflexivity.
   Qed.
 
-  Definition inject n : (@heap ident positive_eq_dec pos_countable) := list_to_map (List.map (fun n => (n,tt)) (inject_aux n)).
+  Definition inject n : (@gset ident positive_eq_dec pos_countable) :=
+    list_to_set (inject_aux n).
 
   Lemma unused_map : inject (first_unused_ident ()) = ∅.
   Proof.
     unfold inject. rewrite unused_nil. simpl. auto.
   Qed.
 
-  Lemma fst_fmap : forall l, (map (λ n0 : positive, (n0, ())) l).*1 = l.
+  Lemma inject_last_set : forall n,
+      Pos.le (first_unused_ident ()) n -> inject (Pos.succ n) = {[ n ]} ∪ (inject n).
   Proof.
-    induction l; simpl; auto.
-    f_equal. unfold fmap in IHl. apply IHl.
+    intros. unfold inject. rewrite inject_last; auto.
+    rewrite list_to_set_app_L. simpl. rewrite union_empty_r_L.
+    rewrite union_comm_L. auto.
   Qed.
 
-
-  Lemma inject_last_heap : forall n,
-      Pos.le (first_unused_ident ()) n -> inject (Pos.succ n) = <[n:=tt]>(inject n).
+  Lemma inject_disjoint : forall n, Pos.le (first_unused_ident ()) n -> inject n ## {[ n ]}.
   Proof.
-    intros. unfold inject. rewrite inject_last; auto. rewrite map_app. simpl.
-    rewrite list_to_map_snoc. auto. rewrite fst_fmap. intro.
-    apply elem_of_list_In in H0. eapply next_disjoint; eauto. eapply elem_of_list_In; eauto.
+    intros. apply disjoint_singleton_r. unfold inject.
+    apply not_elem_of_list_to_set. intro. eapply next_disjoint; eauto.
     constructor.
-  Qed.
-
-  Lemma list_to_map_In : forall l n, (list_to_map (map (λ n0 : positive, (n0, ())) l) : heap) !! n = None <->
-                      not (In n l).
-  Proof.
-    split; intro.
-    - induction l. intro. inversion H0.
-      intro. destruct (Pos.eq_dec n a).
-      + subst. simpl in *. rewrite lookup_insert in H. inversion H.
-      + inversion H0. subst. contradiction.
-        * apply IHl; auto. simpl in H. rewrite lookup_insert_ne in H; auto.
-    - induction l; simpl.
-      + rewrite lookup_empty. auto.
-      + destruct (Pos.eq_dec n a).
-        * subst. exfalso. apply H. apply in_eq.
-        * rewrite lookup_insert_ne; auto. apply IHl. intro. apply H.
-          right; auto.
-  Qed.
-
-  Lemma inject_disjoint : forall n, Pos.le (first_unused_ident ()) n -> inject n ##ₘ {[n := ()]}.
-  Proof.
-    intros. apply map_disjoint_singleton_r. unfold inject.
-    rewrite list_to_map_In. intro. eapply next_disjoint; eauto.
-    apply elem_of_list_In; eauto. constructor.
   Qed.
 
 
@@ -426,9 +391,9 @@ Module adequacy.
       - simpl in *. eapply ind.
         3 : apply H1.
         + simpl. lia.
-        + iIntros "HA". simpl. rewrite inject_last_heap; auto.
-          iDestruct (heap_ctx_split_sing with "HA") as "[HA HB]". apply inject_disjoint; auto.
-          iDestruct (H0 with "HA") as "HA".
+        + iIntros "HA". simpl. rewrite inject_last_set; auto.
+          iDestruct (heap_ctx_split_sing with "HA") as "[HA HB]".
+          apply inject_disjoint; auto. iDestruct (H0 with "HA") as "HA".
           iApply ("HA" with "HB").
       - simpl in *. eapply ind; eauto. iIntros "HA". iApply (H0 with "HA").
     Qed.

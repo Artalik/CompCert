@@ -5,7 +5,7 @@ Export Maps.PTree.
 Notation "a ! b" := (get b a) (at level 1).
 
 Definition hlocally {A} (le : t A) (f : t A -> iProp) : hprop :=
-  fun h => forall le', (forall id v, h !! id = Some v -> le ! id = le' ! id) -> f le' () h.
+  fun h => forall le', (forall id, id ∈ h -> le ! id = le' ! id) -> f le' () h.
 
 Definition locally {A} (le : t A) (f : t A -> iProp) : iProp := MonPred (fun _ => hlocally le f) _.
 
@@ -16,8 +16,10 @@ Ltac inv H := inversion H; clear H; subst.
 Ltac unfold_locally :=
 unfold locally; unfold hlocally; MonPred.unseal; split; MonPred.unseal; intros i h H;
     destruct i; inv H; repeat red; intros a b; destruct a; clear b;
-  exists emp, heap_empty, heap_empty; repeat split; auto; [intros h H0; inversion_star h H; clear H0; inversion H1; subst; simpl in *; rewrite heap_union_empty_l
-                                                     | rewrite heap_union_empty_l; auto ].
+      exists emp; eexists; eexists; repeat split; auto;
+        [intros h H0; inversion_star h H; clear H0; inversion H1; subst;
+         simpl in *; rewrite union_empty_l_L
+        | apply disjoint_empty_l | rewrite union_empty_l_L; auto ].
 
 Lemma locally_base {A} : forall (le : t A), ⊢ locally le (fun le' => emp).
 Proof.
@@ -34,14 +36,14 @@ Lemma locally_consequence {A} : forall (P Q : t A -> iProp) (le : t A),
     ⊢locally le (λ le', P le') -∗ (∀ le, P le -∗ Q le) -∗ locally le (λ le', Q le').
 Proof.
   unfold_locally. clear H3. intros j P0. destruct j. clear P0.
-  repeat red. exists (hheap_ctx h1), h1, ∅. repeat split; auto.
+  repeat red. exists (set_ctx h1), h1, ∅. repeat split; auto.
   red. intros. inversion_star h P. clear H. red in P1. subst.
   edestruct P2. reflexivity. inversion_star h P.
-  clear H. destruct P4. inv H3. clear P5. rewrite heap_union_empty_r.
-  rewrite heap_union_empty_r in P3 P2 H0. apply H.
-  exists h, h1. repeat split; auto. apply H2. intros. eapply H0. rewrite lookup_union_Some_raw.
-  left; eauto. rewrite map_union_comm; auto. rewrite !map_disjoint_spec. intros. inversion H0.
-  rewrite heap_union_empty_r. eauto.
+  clear H. destruct P4. inv H3. clear P5. rewrite union_empty_r_L.
+  rewrite union_empty_r_L in P3 P2 H0. apply H.
+  exists h, h1. repeat split; auto. apply H2. intros. eapply H0. apply elem_of_union_l.
+  auto. rewrite union_comm_L. auto.
+  apply disjoint_empty_r. rewrite union_empty_r_L. auto.
 Qed.
 
 Lemma locally_consequence_2 {A} : forall P Q (le : t A),
@@ -55,14 +57,12 @@ Lemma locally_sep {A} : forall P R (le : t A),
             locally le (fun le' => P le' ∗ R le').
 Proof.
   unfold_locally. intros j P0. destruct j. clear P0 H3 H1.
-  exists (hheap_ctx h1), h1, heap_empty. repeat split; auto.
+  exists (set_ctx h1), h1. eexists. repeat split; auto.
   repeat red. intros. inversion_star h P. clear H. red in P1. subst.
   exists h1, h0. repeat split; auto. apply H2.
-  intros. eapply H0. rewrite lookup_union_Some_raw. left; eauto.
-  apply P2. intros. eapply H0. rewrite lookup_union_Some_raw. right; eauto.
-  split; eauto. eapply map_disjoint_Some_r; eauto.
-  rewrite !map_disjoint_spec. intros. inversion H0.
-  rewrite heap_union_empty_r. eauto.
+  intros. eapply H0. apply elem_of_union_l. auto.
+  apply P2. intros. eapply H0. apply elem_of_union_r. auto.
+  apply disjoint_empty_r. rewrite union_empty_r_L. auto.
 Qed.
 
 Lemma locally_and {A} : forall P R (le : t A),
@@ -71,10 +71,11 @@ Lemma locally_and {A} : forall P R (le : t A),
 Proof.
   unfold locally; unfold hlocally; MonPred.unseal; split; MonPred.unseal; intros i h H;
   destruct i; inversion H as (H0); clear H; subst. intros j H; destruct j; clear H.
-  exists emp, heap_empty, heap_empty; repeat split; auto.
-  3 : rewrite heap_union_empty_l; auto.
+  exists emp; eexists; eexists; repeat split; auto.
+  4 : rewrite union_empty_l_L; auto.
+  3 : apply disjoint_empty_l.
   1-2 :inversion_star h P; clear H; destruct P2; inv P1; clear P3; simpl in *;
-    rewrite heap_union_empty_l; rewrite heap_union_empty_l in H0.
+    rewrite union_empty_l_L; rewrite union_empty_l_L in H0.
   apply H. intros. eapply H0. eauto.
   apply H1. intros. eapply H0. eauto.
 Qed.
@@ -102,8 +103,7 @@ Lemma locally_modout {A} : forall P (le : t A),
 Proof.
   unfold_locally. clear H3. red in H2. inversion_star h P. clear H2. intros.
   exists h, h0. repeat split; auto. apply P2. intros. eapply H. rewrite P0.
-  rewrite lookup_union_Some_raw. right; auto. split; eauto.
-  eapply map_disjoint_Some_r; eauto.
+  apply elem_of_union_r. auto.
 Qed.
 
 Lemma locally_idempotence {A} : forall P (le : t A),
@@ -192,18 +192,18 @@ Proof.
   exists (hsingle t0). do 2 eexists. split; auto. reflexivity. repeat split; auto.
   intros h P. inversion_star h P. clear P. red in P1. subst. exists h1. eexists. split.
   intros le' P4. eapply P2. intros. erewrite <- P4. assert (id <> t0). intro. subst.
-  eapply map_disjoint_spec; eauto. rewrite lookup_singleton. eauto.
+  eapply P3; eauto. apply lookup_singleton.
   rewrite gso; eauto. eauto.
-  repeat split; auto. rewrite map_union_comm; auto.
-  rewrite !map_disjoint_spec. intros. inversion H0.
-  rewrite heap_union_empty_r. eauto.
+  repeat split; auto. rewrite union_comm_L; auto.
+  apply disjoint_empty_r.
+  rewrite union_empty_r_L. eauto.
 Qed.
 
 Lemma locally_lookup {A} : forall le t (v : A),
     ⊢ & t -∗ locally (set t v le) (λ le', ⌜le' ! t = Some v⌝).
 Proof.
-  unfold_locally. intros. red. erewrite <- H. apply gss. rewrite H2. rewrite lookup_singleton.
-  eauto.
+  unfold_locally. intros. red. erewrite <- H. apply gss. rewrite H2.
+  apply lookup_singleton.
 Qed.
 
 Lemma locally_out {A} : forall P Q (le : t A),
