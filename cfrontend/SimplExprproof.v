@@ -202,6 +202,8 @@ Section PRESERVATION.
       iIntros; norm_all; apply_ind apply_ind_simple_nil; subst; case_dst.
     - unfold tr_rvalof; rewrite P0; norm_all; subst; auto.
     - unfold tr_rvalof; rewrite P0; norm_all; subst; auto.
+    - iDestruct (H with "HF [] []") as "%"; eauto. subst. auto.
+    - iDestruct (H with "HB [] []") as "%"; eauto.
     - destruct H; auto.
     - auto.
   Qed.
@@ -312,9 +314,13 @@ Section PRESERVATION.
       destruct dst; simpl; simpl_list; auto.
       + repeat split; auto. econstructor; eauto.
       + eexists. repeat split; auto. econstructor; eauto.
-    - subst. iPureIntro. rewrite H5 in H1. destruct dst; simpl in *; auto.
-      + repeat split; auto. econstructor; eauto.
-      + eexists. repeat split; eauto. econstructor; eauto.
+    - destruct dst; norm_all; subst.
+      + iDestruct (H0 with "HF") as "[% [% %]]".
+        iPureIntro. subst. repeat split; auto. econstructor; eauto. rewrite <- H3. auto.
+      + iDestruct (H0 with "HB") as "$".
+      + iDestruct (H0 with "HF") as "[% [% %]]".
+        iPureIntro. subst. eexists. repeat split; auto. econstructor; eauto.
+        rewrite <- H3. auto.
     - iPureIntro. subst.
       destruct dst; simpl in *; simpl_list; auto; repeat eexists; pose (P := comp_env_preserved);
         simpl in P; rewrite <- P; apply eval_Esizeof.
@@ -449,8 +455,8 @@ Section PRESERVATION.
       iApply locally_sep_indep_r. iSplitL; auto.
     - iApply (locally_frame_l with "HE"). locally_core true.
       iApply (locally_delete_2 with "HG HI"). iIntros. iFrame. auto.
-    - iApply (locally_frame_l with "HE"). locally_core true. iModIntro.
-      iApply locally_sep_indep_r. iSplitL; auto.
+    - destruct dst; norm_all; apply_ind apply_ind_invariant; locally_core true;
+      iApply (locally_consequence with "HG"); iIntros; iFrame; norm_all.
     - destruct dst; norm_all; apply_ind apply_ind_invariant; locally_core true;
       iApply (locally_delete_2 with "HE HG"); iIntros; iFrame;  norm_all.
     - destruct dst; norm_all; apply_ind apply_ind_invariant; locally_core true;
@@ -577,7 +583,11 @@ Proof.
       iDestruct (proj1 tr_expr_invariant with "HF") as "HC".
       init H1 "HH". core1 "_A" e'. iApply (locally_consequence with "HC"). finish_him.
     (* cast *)
-    - init H0 "HF". core1 "_A" e'. iApply locally_simpl. finish_him.
+    - destruct dst; norm_all.
+      + init H0 "HF". core1 "_A" e'. iApply locally_simpl. finish_him.
+      + init H0 "HB". core1 "_A" e'. iApply locally_simpl. finish_him.
+      + init H0 "HF". core1 "_A" e'. iApply locally_simpl. finish_him.
+
     (* seqand *)
     - destruct dst; norm_all; iDestruct (proj1 tr_expr_invariant with "HF") as "HB";
         init H0 "HD"; core1 "_A" e'; iApply (locally_consequence with "HB"); finish_him.
@@ -1135,14 +1145,15 @@ Proof.
     subst; iPureIntro; NoLabelTac.
   - destruct dst; norm_all; apply_ind apply_ind_label; subst; iPureIntro; NoLabelTac.
   - destruct dst; norm_all; apply_ind apply_ind_label; subst; iPureIntro; NoLabelTac.
+  - destruct dst; norm_all; apply_ind apply_ind_label; subst; iPureIntro; NoLabelTac.
   - destruct dst; norm_all; apply_ind apply_ind_label; subst.
-    + iDestruct (H0 with "[HF]") as "%". iDestruct "HF" as "[HD _]"; auto.
-      iDestruct (H1 with "[HF]") as "%". iDestruct "HF" as "[_ HD]"; auto.
-      subst. iPureIntro. NoLabelTac.
-    + subst. iPureIntro. NoLabelTac.
-    + iDestruct (H0 with "[HH]") as "%". iDestruct "HH" as "[HC _]"; auto.
-      iDestruct (H1 with "[HH]") as "%". iDestruct "HH" as "[_ HC]"; auto.
-      subst. iPureIntro. NoLabelTac.
+    + iDestruct (H0 with "[HF]") as "%". iDestruct "HF" as "[$ _]".
+      iDestruct (H1 with "[HF]") as "%". iDestruct "HF" as "[_ $]".
+      iPureIntro; NoLabelTac.
+    + iPureIntro; NoLabelTac.
+    + iDestruct (H0 with "[HH]") as "%". iDestruct "HH" as "[$ _]".
+      iDestruct (H1 with "[HH]") as "%". iDestruct "HH" as "[_ $]".
+      iPureIntro; NoLabelTac.
   - destruct dst; norm_all; apply_ind apply_ind_label; subst; iPureIntro; NoLabelTac.
   - destruct dst; norm_all; apply_ind apply_ind_label; subst; iPureIntro; NoLabelTac.
   - destruct dst; norm_all; apply_ind apply_ind_label; subst; iPureIntro; NoLabelTac.
