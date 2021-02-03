@@ -16,7 +16,7 @@ Section hprop.
 (* =hprop= *)
 Context {X : Type}.
 Context {eqX : EqDecision X}.
-Context {count_X : Countable X}.
+Context {countX : Countable X}.
 Definition heap : Type := gmap X unit.
 (* =end= *)
 
