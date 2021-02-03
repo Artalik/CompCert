@@ -72,26 +72,6 @@ Section hprop.
 
   Local Notation "\Top" := htop.
 
-  (* Lemma gset_disjoint_union_l_l : forall (h1 h2 h3 : gset X) , h1 ∪ h2 ## h3 -> h1 ## h3. *)
-  (* Proof. *)
-  (*   intros. apply disjoint_union_l in H as (P0&P1). assumption. *)
-  (* Qed. *)
-
-  (* Lemma heap_disjoint_union_l_r : forall (h1 h2 h3 :heap) , h1 ∪ h2 ##ₘ h3 -> h2 ##ₘ h3. *)
-  (* Proof. *)
-  (*   intros. apply map_disjoint_union_l in H as (P0&P1). assumption. *)
-  (* Qed. *)
-
-  (* Lemma heap_disjoint_union_r_r : forall (h1 h2 h3 :heap) , h1 ##ₘ h2 ∪ h3 -> h1 ##ₘ h3. *)
-  (* Proof. *)
-  (*   intros. apply map_disjoint_union_r in H as (P0&P1). assumption. *)
-  (* Qed. *)
-
-  (* Lemma heap_disjoint_union_r_l : forall (h1 h2 h3 :heap) , h1 ##ₘ h2 ∪ h3 -> h1 ##ₘ h2. *)
-  (* Proof. *)
-  (*   intros. apply map_disjoint_union_r in H as (P0&P1). assumption. *)
-  (* Qed. *)
-
   Ltac inversion_star h P :=
     match goal with
     | H : (_ \* _) _ |- _ =>
