@@ -1,10 +1,7 @@
-Require Import FunctionalExtensionality.
-
 From iris Require Export bi.bi proofmode.tactics proofmode.monpred.
 
 From stdpp Require Export gmap.
 
-Axiom prop_extensionality : forall A B:Prop, (A <-> B) -> A = B.
 Definition pred_incl {A} (P Q : A -> Prop) := forall x, P x -> Q x.
 
 Definition pred_impl {A} (P Q : A -> Prop) := fun x => P x -> Q x.
@@ -133,45 +130,32 @@ Definition hpure (P : Prop) : hprop := fun _ => P.
       do 3 (let w0 := fresh P in
             destruct w as (w0&w))
     end.
-  Ltac extens := apply functional_extensionality; intro; apply prop_extensionality.
-
-  Section Properties.
-
-    Lemma hstar_comm : forall H1 H2,
-      H1 \* H2 = H2 \* H1.
-    Proof using.
-      intros H1 H2. extens.
-      split; intro P; inversion_star h P; exists h0; exists h; repeat split; auto;
-        rewrite heap_union_comm; auto.
-    Qed.
-
-    Lemma hstar_assoc : forall H1 H2 H3,
-        (H1 \* H2) \* H3 = H1 \* (H2 \* H3).
-    Proof using.
-      intros H1 H2 H3. extens. split.
-      { intros (h'&h3&(h1&h2&M3&M4&D'&U')&M2&D&U). subst h'.
-        exists h1; exists (h2 ∪ h3). repeat split; auto.
-        { exists h2; exists h3; eauto with heap_scope. }
-        { apply map_disjoint_union_l in D as (P0&P1).
-          apply map_disjoint_union_r. split; auto. }
-        { by rewrite heap_union_assoc. }}
-      { intros (h1&h'&M1&(h2&h3&M3&M4&D'&U')&D&U). subst h'.
-        exists (h1 ∪ h2); exists h3. repeat split; auto.
-        { exists h1; exists h2; eauto with heap_scope. }
-        { rewrite map_disjoint_union_l. split; auto.
-          apply map_disjoint_union_r in D as (P0&P1).
-          assumption. }
-          by rewrite <- heap_union_assoc. }
-    Qed.
-
-  End Properties.
 
   Definition hpersistent (H:hprop) : hprop := fun h => H heap_empty.
 
   Definition hlater (H : hprop) := H.
 
-  Set Warnings "-redundant-canonical-projection -convert_concl_no_check".
-  Canonical Structure hpropO := leibnizO hprop.
+  Instance equiv_hprop : Equiv hprop.
+  Proof.
+    intros P0 P1. apply (forall h, P0 h <-> P1 h).
+  Defined.
+
+  Instance dist_hprop : Dist hprop.
+  Proof.
+    intros _ P0 P1. apply (forall h, P0 h <-> P1 h).
+  Defined.
+
+  Program Canonical Structure testofe := @Ofe hprop _ _ _.
+  Next Obligation.
+    split.
+    - intros; split; intros; auto. apply (H 0).
+    - intros; split; repeat intro; auto.
+      + split; intro; apply H; auto.
+      + split; intro.
+        apply H0. apply H. auto.
+        apply H. apply H0. auto.
+    - intros. intro. apply H.
+  Defined.
 
   Program Canonical Structure hpropI : bi :=
     Bi hprop _ _ pred_incl hempty hpure hand hor
@@ -180,12 +164,34 @@ Definition hpure (P : Prop) : hprop := fun _ => P.
     repeat split; try(solve_proper); eauto.
     - intros H h P. assumption.
     - rewrite /Transitive. intros. intros h P. eauto.
-    - rewrite leibniz_equiv_iff. intros (P0&P1). extens. split; intro; auto.
-    - intros n P0 P1 Z. rewrite /hpure. repeat red. extens. auto.
-    - intros n P0 P1 Z. rewrite /hforall. repeat red. intros. extens.
-      split; intros; repeat red in H; apply functional_extensionality in H; subst; auto.
-    - intros n P0 P1 Z. rewrite /hexists. repeat red. intros. extens.
-      split; intro; repeat red in H; apply functional_extensionality in H; subst; auto.
+    - repeat intro. apply H. auto.
+    - repeat intro. apply H. auto.
+    - destruct H; intro; apply H; auto.
+    - destruct H; intro; apply H0; auto.
+    - intro; apply H; auto.
+    - intro. apply H; auto.
+    - destruct H1. apply H. auto.
+    - apply H0. destruct H1. auto.
+    - apply H. destruct H1. auto.
+    - apply H0. destruct H1. auto.
+    - intro. destruct H1. left. apply H. auto. right. apply H0. auto.
+    - intro. destruct H1. left. apply H. auto. right. apply H0. auto.
+    - repeat intro. apply H0. apply H1. apply H. auto.
+    - repeat intro. apply H0. apply H1. apply H. auto.
+    - repeat intro. apply H. apply H0.
+    - repeat intro. apply H. apply H0.
+    - repeat intro. edestruct H0. exists x0. apply H. apply H1.
+    - repeat intro. edestruct H0. exists x0. apply H. apply H1.
+    - intros. inversion_star h P. exists h0, h1. repeat split; auto. apply H; auto. apply H0; auto.
+    - intros. inversion_star h P. exists h0, h1. repeat split; auto. apply H; auto. apply H0; auto.
+    - rewrite /hwand. repeat intro. destruct H1. inversion_star h P.
+      exists x1, h0, h1. destruct P1. repeat split; auto. repeat intro. inversion_star h P.
+      apply H0. apply H2. exists h2, h3. repeat split; auto. apply H. auto.
+    - rewrite /hwand. repeat intro. destruct H1. inversion_star h P.
+      exists x1, h0, h1. destruct P1. repeat split; auto. repeat intro. inversion_star h P.
+      apply H0. apply H2. exists h2, h3. repeat split; auto. apply H. auto.
+    - intro. apply H. apply H0.
+    - intro. apply H. apply H0.
     - rewrite /hpure. intros φ P imp h P0. apply imp; auto.
     - rewrite /hand. intros P Q h (P0&P1). apply P0.
     - rewrite /hand. intros P Q h (P0&P1). apply P1.
@@ -205,7 +211,11 @@ Definition hpure (P : Prop) : hprop := fun _ => P.
       rewrite heap_union_empty_l. apply H4.
     - intros P Q h R. inversion_star H H. exists H2; exists H0. repeat split; auto. subst.
       apply heap_union_comm. apply H5.
-    - intros P Q R h P0. rewrite <- hstar_assoc. apply P0.
+    - intros P Q R h P0. inversion_star h P. clear P0. inversion_star h P. clear P2.
+      exists h2. exists (h3 ∪ h1). repeat split; auto. exists h3, h1. repeat split; auto.
+      subst. eapply heap_disjoint_union_l_r; eauto. subst.
+      apply map_disjoint_union_l in P4. destruct P4. eapply map_disjoint_union_r.
+      split; auto. subst. rewrite assoc. auto.
     - intros P Q R P0 h P1. exists P. exists h; exists heap_empty. repeat split; auto with heap_scope.
       apply map_disjoint_empty_r.
     - intros P Q R W h P0. inversion_star h P. apply W in P2. destruct P2. inversion_star h H.
@@ -220,6 +230,8 @@ Definition hpure (P : Prop) : hprop := fun _ => P.
   Qed.
   Next Obligation.
     repeat split; try(solve_proper); eauto.
+    - intro. apply H. auto.
+    - intro. apply H. auto.
     - intros A Φ h a. rewrite /hlater. unfold hforall in *. unfold hlater in a. apply a.
     - intros A Φ h a. rewrite /hor. unfold hlater in *. destruct a. right. exists x. apply H.
     - intros Hp h P. unfold hlater in *. right. intro. apply P.
@@ -296,12 +308,9 @@ Lemma singleton_neq : forall l l', ⊢ & l -∗ & l' -∗ ⌜l ≠ l'⌝.
     MonPred.unseal=> -[H]. repeat red in H.
     pose (e := H () ∅).
     simpl in *. edestruct e.
-    - rewrite monPred_at_emp. split; auto; apply hempty_intro.
+    - MonPred.unseal. reflexivity.
     - repeat red. repeat split; auto.
-    - inversion_star h P.
-      inversion P1.
-      apply H1.
-      exists heap_empty; exists h.
+    - inversion_star h P. inversion P1. apply H1. exists heap_empty; exists h.
       inversion H2; subst. rewrite heap_union_empty_r in P; subst.
       repeat split; auto. apply map_disjoint_empty_l. rewrite heap_union_empty_l. auto.
   Qed.
