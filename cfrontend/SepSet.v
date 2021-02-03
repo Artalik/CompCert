@@ -317,7 +317,7 @@ Lemma singleton_neq : forall l l', ⊢ & l -∗ & l' -∗ ⌜l ≠ l'⌝.
 
 (* =equivalence= *)
 Lemma equivalence (Φ : iProp) h : Φ () h <-> (⊢&& h -∗ Φ).
-(* =end *)
+(* =end= *)
   Proof.
     split.
     apply completeness.
