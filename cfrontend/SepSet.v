@@ -1,6 +1,6 @@
 From iris Require Export bi.bi proofmode.tactics proofmode.monpred.
 
-From stdpp Require Export gmap.
+From stdpp Require Export mapset gmap.
 
 Definition pred_incl {A} (P Q : A -> Prop) := forall x, P x -> Q x.
 
@@ -9,48 +9,13 @@ Definition pred_impl {A} (P Q : A -> Prop) := fun x => P x -> Q x.
 Notation "P ==> Q" := (pred_incl P Q).
 
 Section hprop.
-  Context {X : Type}.
-  Context {eqX : EqDecision X}.
-  Context {count_X : Countable X}.
-
-  Definition heap : Type := gmap X unit.
-
-  (* Properties on heap *)
-  Instance heap_union_empty_l : LeftId (=@{heap}) ∅ (∪) := _.
-  Instance heap_union_empty_r : RightId (=@{heap}) ∅ (∪) := _.
-  Instance heap_union_assoc : base.Assoc (=@{heap}) (∪).
-  Proof.
-    intros m1 m2 m3. unfold base.union, map_union, union_with, map_union_with.
-    apply (merge_assoc _). intros i.
-    unfold heap in m1. unfold heap in m2. unfold heap in m3.
-      by destruct (m1 !! i), (m2 !! i), (m3 !! i).
-  Qed.
-
-  Definition heap_union_comm (h1 h2 : heap) := map_union_comm h1 h2.
-
-  Lemma heap_disjoint_union_l_l : forall (h1 h2 h3 :heap) , h1 ∪ h2 ##ₘ h3 -> h1 ##ₘ h3.
-  Proof.
-    intros. apply map_disjoint_union_l in H as (P0&P1). assumption.
-  Qed.
-
-  Lemma heap_disjoint_union_l_r : forall (h1 h2 h3 :heap) , h1 ∪ h2 ##ₘ h3 -> h2 ##ₘ h3.
-  Proof.
-    intros. apply map_disjoint_union_l in H as (P0&P1). assumption.
-  Qed.
-
-  Lemma heap_disjoint_union_r_r : forall (h1 h2 h3 :heap) , h1 ##ₘ h2 ∪ h3 -> h1 ##ₘ h3.
-  Proof.
-    intros. apply map_disjoint_union_r in H as (P0&P1). assumption.
-  Qed.
-
-  Lemma heap_disjoint_union_r_l : forall (h1 h2 h3 :heap) , h1 ##ₘ h2 ∪ h3 -> h1 ##ₘ h2.
-  Proof.
-    intros. apply map_disjoint_union_r in H as (P0&P1). assumption.
-  Qed.
 
   (* Operators *)
 
-  Definition hprop := heap -> Prop.
+  Context {X : Type}.
+  Context {eqX : EqDecision X}.
+  Context {countX : Countable X}.
+  Definition hprop := gset X -> Prop.
 
   Definition hand (H1 H2 : hprop) : hprop :=
     fun h => H1 h /\ H2 h.
@@ -60,12 +25,12 @@ Section hprop.
   Definition hempty : hprop := fun h => h = ∅.
 
   Definition hsingle l : hprop :=
-    fun h =>  h = {[l := tt]}.
+    fun h =>  h = {[ l ]}.
 
-  Definition hheap_ctx (ctx : heap) : hprop := fun h => h = ctx.
+  Definition set_ctx (ctx : gset X) : hprop := fun h => h = ctx.
 
   Definition hstar (H1 H2 : hprop) : hprop :=
-    fun h => exists h1 h2, H1 h1 /\ H2 h2 /\ (h1 ##ₘ h2) /\ h = h1 ∪ h2.
+    fun h => exists h1 h2, H1 h1 /\ H2 h2 /\ (h1 ## h2) /\ h = h1 ∪ h2.
 
   Definition hexists {A} (J : A -> hprop) : hprop := fun h => exists x, J x h.
   Definition hforall {A} (f : A -> hprop) : hprop := fun h => forall a, f a h.
@@ -85,7 +50,7 @@ Section hprop.
   Lemma hempty_intro : hempty ∅.
   Proof using. reflexivity. Qed.
 
-  Local Notation "'heap_empty'" := (∅ : heap).
+  Local Notation "'empty'" := (∅ : gset X).
 
   Local Notation "h1 \u h2" := (h1 ∪ h2) (at level 37, right associativity).
 
@@ -95,7 +60,6 @@ Section hprop.
                                             (at level 39, x1 name, x2 name, H at level 50).
   Local Notation "'Hexists' x1 x2 x3 , H" := (Hexists x1, Hexists x2, Hexists x3, H)
                                                (at level 39, x1 name, x2 name, x3 name, H at level 50).
-
 
   Local Notation "'\[]'" := (hempty)
                               (at level 0).
@@ -108,10 +72,25 @@ Section hprop.
 
   Local Notation "\Top" := htop.
 
+  (* Lemma gset_disjoint_union_l_l : forall (h1 h2 h3 : gset X) , h1 ∪ h2 ## h3 -> h1 ## h3. *)
+  (* Proof. *)
+  (*   intros. apply disjoint_union_l in H as (P0&P1). assumption. *)
+  (* Qed. *)
 
-  Declare Scope heap_scope.
+  (* Lemma heap_disjoint_union_l_r : forall (h1 h2 h3 :heap) , h1 ∪ h2 ##ₘ h3 -> h2 ##ₘ h3. *)
+  (* Proof. *)
+  (*   intros. apply map_disjoint_union_l in H as (P0&P1). assumption. *)
+  (* Qed. *)
 
-  Hint Resolve heap_union_empty_l heap_union_empty_r hempty_intro map_disjoint_empty_l map_disjoint_empty_r heap_union_assoc heap_disjoint_union_r_l heap_disjoint_union_l_l heap_disjoint_union_r_r heap_disjoint_union_l_r : heap_scope.
+  (* Lemma heap_disjoint_union_r_r : forall (h1 h2 h3 :heap) , h1 ##ₘ h2 ∪ h3 -> h1 ##ₘ h3. *)
+  (* Proof. *)
+  (*   intros. apply map_disjoint_union_r in H as (P0&P1). assumption. *)
+  (* Qed. *)
+
+  (* Lemma heap_disjoint_union_r_l : forall (h1 h2 h3 :heap) , h1 ##ₘ h2 ∪ h3 -> h1 ##ₘ h2. *)
+  (* Proof. *)
+  (*   intros. apply map_disjoint_union_r in H as (P0&P1). assumption. *)
+  (* Qed. *)
 
   Ltac inversion_star h P :=
     match goal with
@@ -125,7 +104,7 @@ Section hprop.
             destruct w as (w0&w))
     end.
 
-  Definition hpersistent (H:hprop) : hprop := fun h => H heap_empty.
+  Definition hpersistent (H:hprop) : hprop := fun h => H empty.
 
   Definition hlater (H : hprop) := H.
 
@@ -199,28 +178,28 @@ Section hprop.
     - intros x W H P Q. exists H. apply Q.
     - intros x W Q P h P0. destruct P0. eapply P. apply H.
     - intros P P' Q Q' A B C D. inversion_star h P. exists h; exists h0. repeat split; auto.
-    - intros x W A. exists heap_empty; exists W. repeat split; auto with heap_scope.
-      apply map_disjoint_empty_l.
+    - intros x W A. exists empty; exists W. repeat split; auto.
+      apply disjoint_empty_l. rewrite union_empty_l_L. auto.
     - intros P h Q. inversion_star H H. inversion H3. subst.
-      rewrite heap_union_empty_l. apply H4.
+      rewrite union_empty_l_L. apply H4.
     - intros P Q h R. inversion_star H H. exists H2; exists H0. repeat split; auto. subst.
-      apply heap_union_comm. apply H5.
+      apply union_comm_L.
     - intros P Q R h P0. inversion_star h P. clear P0. inversion_star h P. clear P2.
       exists h2. exists (h3 ∪ h1). repeat split; auto. exists h3, h1. repeat split; auto.
-      subst. eapply heap_disjoint_union_l_r; eauto. subst.
-      apply map_disjoint_union_l in P4. destruct P4. eapply map_disjoint_union_r.
-      split; auto. subst. rewrite assoc. auto.
-    - intros P Q R P0 h P1. exists P. exists h; exists heap_empty. repeat split; auto with heap_scope.
-      apply map_disjoint_empty_r.
+      subst. eapply disjoint_union_l; eauto. eapply disjoint_union_r. subst.
+      split; auto. eapply disjoint_union_l. rewrite union_comm. eauto.
+      subst. rewrite union_assoc_L. auto.
+    - intros P Q R P0 h P1. exists P. exists h; exists empty. repeat split; auto.
+      apply disjoint_empty_r. rewrite union_empty_r_L. auto.
     - intros P Q R W h P0. inversion_star h P. apply W in P2. destruct P2. inversion_star h H.
       inversion H2. apply H4. exists h2; exists h1. repeat split; auto; subst.
-      + apply heap_disjoint_union_l_l in P4. apply P4.
-      + inversion H5. subst. rewrite heap_union_empty_r. reflexivity.
+      + apply disjoint_union_l in P4. apply P4.
+      + inversion H5. subst. rewrite union_empty_r_L. auto.
     - rewrite /hpersistent. intros P Q H h P0. apply H. apply P0.
     - rewrite /hpersistent. rewrite /hforall. intros A B C D E. apply D.
     - rewrite /hpersistent. intros P Q h P0. inversion_star h P. apply P2.
-    - intros P Q x W. destruct W. exists heap_empty; exists x. repeat split; auto with heap_scope.
-      apply map_disjoint_empty_l.
+    - intros P Q x W. destruct W. exists empty; exists x. repeat split; auto.
+      apply disjoint_empty_l. rewrite union_empty_l_L. auto.
   Qed.
   Next Obligation.
     repeat split; try(solve_proper); eauto.
@@ -245,14 +224,14 @@ Section hprop.
 
   Definition single (l : X) : @monPred biInd hpropI := MonPred (fun _ => hsingle l) _.
 
-  Definition heap_ctx (h : heap) : monPred biInd hpropI := MonPred (fun _ => hheap_ctx h) _.
+  Definition ctx (h : gset X) : monPred biInd hpropI := MonPred (fun _ => set_ctx h) _.
 
   Ltac inv H := inversion H; clear H; subst.
 
   Local Open Scope bi_scope.
 
   Local Notation "'&&' l" :=
-    (heap_ctx l) (at level 20) : bi_scope.
+    (ctx l) (at level 20) : bi_scope.
 
   Local Notation "'&' l" :=
     (single l) (at level 20) : bi_scope.
@@ -260,23 +239,23 @@ Section hprop.
   Lemma singleton_neq : forall l l', ⊢ & l -∗ & l' -∗ ⌜l ≠ l'⌝.
   Proof.
     MonPred.unseal. split. MonPred.unseal. repeat red. intros. destruct i. destruct a. clear H0.
-    inv H. exists emp, heap_empty, heap_empty. repeat split; auto with heap_scope.
+    inv H. exists emp, empty, empty. repeat split; auto.
     intros h H j C. clear C. clear j. inversion_star h P. clear H. inv P0. clear P2.
-    red in P1. rewrite heap_union_empty_l. exists (hheap_ctx h1), h1, heap_empty.
-    repeat split; eauto with heap_scope. subst. intros h H eq. inversion_star h P. clear H.
-    red in P1. red in P0. subst. erewrite map_disjoint_spec in P2.
-    edestruct P2; eapply lookup_singleton_Some; eauto.
-    apply map_disjoint_empty_r.
+    red in P1. rewrite union_empty_l_L. exists (set_ctx h1), h1, empty.
+    repeat split; eauto. subst. intros h H eq. inversion_star h P. clear H.
+    red in P1. red in P0. subst. erewrite disjoint_singleton_l in P2. apply P2.
+    apply lookup_singleton. apply disjoint_empty_r. rewrite union_empty_r_L. auto.
+    apply disjoint_empty_r. rewrite union_empty_r_L. auto.
   Qed.
 
   Lemma emp_trivial : ⊢ (emp : monPred biInd hpropI). simpl. auto. Qed.
 
-  Global Instance affine_heap_empty : Affine (heap_ctx ∅).
+  Global Instance affine_heap_empty : Affine (ctx ∅).
   Proof.
     split. intro. MonPred.unseal. repeat red. intros. apply H.
   Qed.
 
-  Lemma init_heap : ⊢ heap_ctx ∅.
+  Lemma init_heap : ⊢ ctx ∅.
   Proof.
     split. MonPred.unseal. repeat red. intros. apply H.
   Qed.
@@ -302,18 +281,18 @@ Section hprop.
     simpl in *. edestruct e.
     - MonPred.unseal. reflexivity.
     - repeat red. repeat split; auto.
-    - inversion_star h P. inversion P1. apply H1. exists heap_empty; exists h.
-      inversion H2; subst. rewrite heap_union_empty_r in P; subst.
-      repeat split; auto. apply map_disjoint_empty_l. rewrite heap_union_empty_l. auto.
+    - inversion_star h P. inversion P1. apply H1. exists empty; exists h.
+      inversion H2; subst. rewrite union_empty_r_L in P; subst.
+      repeat split; auto. apply disjoint_empty_l. rewrite union_empty_l_L. auto.
   Qed.
 
   Lemma completeness (Φ : iProp) h : Φ () h -> (⊢&& h -∗ Φ).
   Proof.
-    MonPred.unseal. split. MonPred.unseal. simpl. repeat red. intros. exists emp. exists x; exists heap_empty.
-    repeat split; auto with heap_scope.
+    MonPred.unseal. split. MonPred.unseal. simpl. repeat red. intros. exists emp. exists x; exists empty.
+    repeat split; auto.
     intros h0 P0. inversion_star h P. simpl in *. rewrite <- P2 in *. inversion P1.
-    subst. rewrite heap_union_empty_l. rewrite <- P2. destruct a. apply H.
-    apply map_disjoint_empty_r.
+    subst. rewrite union_empty_l_L. rewrite <- P2. destruct a. apply H.
+    apply disjoint_empty_r. rewrite union_empty_r_L. auto.
   Qed.
 
   Lemma equivalence (Φ : iProp) h : Φ () h <-> (⊢&& h -∗ Φ).
@@ -323,27 +302,27 @@ Section hprop.
     apply soundness.
   Qed.
 
-  Lemma heap_ctx_split (h h' : heap) : h ##ₘ h' -> (⊢&& (h \u h') -∗ && h ∗ && h').
+  Lemma heap_ctx_split (h h' : gset X) : h ## h' -> (⊢&& (h \u h') -∗ && h ∗ && h').
   Proof.
     MonPred.unseal. split. MonPred.unseal. repeat red.
     intros. exists hempty. inversion H0; subst.
-    exists heap_empty; exists heap_empty. repeat split; auto.
+    exists empty; exists empty. repeat split; auto.
     + repeat intro. inversion_star h P. inversion P1. subst.
       exists h; exists h'. repeat split; auto. inversion P0; subst.
-      rewrite heap_union_empty_l. reflexivity.
-    + rewrite heap_union_empty_l. reflexivity.
+      rewrite union_empty_l_L. reflexivity.
+    + apply disjoint_empty_l.
+    + rewrite union_empty_l_L. reflexivity.
   Qed.
 
-  Lemma heap_ctx_split_sing (h : heap) l : h ##ₘ ({[l := tt]}) ->
-                                             (⊢&& (<[l := tt]>h) -∗ && h ∗ & l).
+  Lemma heap_ctx_split_sing (h : gset X) l : h ## ({[ l ]}) ->
+                                             (⊢&& ({[ l ]} \u h) -∗ && h ∗ & l).
   Proof.
-    iIntros (?) "HA". rewrite insert_union_singleton_r; auto. iApply heap_ctx_split; auto.
-    rewrite <- map_disjoint_singleton_r. eauto.
+    iIntros (?) "HA". iApply heap_ctx_split; auto. rewrite union_comm_L. auto.
   Qed.
 
 End hprop.
 
-Notation "'heap_empty'" := (∅ : heap).
+Notation "'empty'" := (∅ : gset).
 
 Notation "'\[]'" := (hempty) (at level 0).
 
@@ -353,10 +332,6 @@ Notation "H1 '\*' H2" := (hstar H1 H2) (at level 41, right associativity).
 
 Notation "\Top" := htop.
 
-
-Declare Scope heap_scope.
-
-Global Hint Resolve heap_union_empty_l heap_union_empty_r hempty_intro map_disjoint_empty_l map_disjoint_empty_r heap_union_assoc heap_disjoint_union_r_l heap_disjoint_union_l_l heap_disjoint_union_r_r heap_disjoint_union_l_r : heap_scope.
 
 Ltac inversion_star h P :=
   match goal with
@@ -376,4 +351,4 @@ Notation "'&' l" :=
   (single l) (at level 20).
 
 Notation "'&&' h" :=
-  (heap_ctx h) (at level 20).
+  (ctx h) (at level 20).
