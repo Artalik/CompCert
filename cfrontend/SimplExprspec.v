@@ -590,9 +590,10 @@ with tr_lblstmts: Csyntax.labeled_statements -> labeled_statements -> Prop :=
     | _ => idtac
     end.
 
-
+  (* =transl_stmt_meets_spec= *)
   Lemma transl_stmt_meets_spec : forall s,
       ⊢ {{ emp }} transl_stmt s {{ res; ⌜ tr_stmt s res ⌝}}
+  (* =end= *)
   with transl_lblstmt_meets_spec:
          forall s,
            ⊢ {{ emp }} transl_lblstmt s {{ res; ⌜ tr_lblstmts s res ⌝ }}.
