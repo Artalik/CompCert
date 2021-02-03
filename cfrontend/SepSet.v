@@ -38,7 +38,7 @@ Definition hsingle l : hprop :=
 Notation "n '##' m" := (n ##ₘ m).
 (* =hstar= *)
 Definition hstar (H1 H2 : hprop) : hprop :=
-  fun h => exists h1 h2, H1 h1 /\ H2 h2 /\ (h1 ## h2) /\ h = h1 ∪ h2.
+  fun h => exists h1 h2, H1 h1 /\ H2 h2 /\ h1 ## h2 /\ h = h1 ∪ h2.
 (* =end= *)
 (* =hquantifier= *)
 Definition hexists {A} (J : A -> hprop) : hprop := fun h => exists x, J x h.
