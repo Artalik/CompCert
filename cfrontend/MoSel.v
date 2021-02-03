@@ -4,7 +4,7 @@ From iris.proofmode Require Export base intro_patterns spec_patterns
 Require Import FunctionalExtensionality.
 From iris Require Export bi.bi proofmode.tactics proofmode.monpred proofmode.reduction.
 From stdpp Require Export pmap.
-Require Import SepList.
+Require Import SepSet.
 
 Global Set Warnings "-convert_concl_no_check".
 
@@ -97,7 +97,7 @@ Require Import Ctypes.
 Module gensym.
   Import Errors.
   Export SepBasicCore.
-  Export SepList.
+  Export SepSet.
 
   Definition ident := positive.
 
@@ -198,7 +198,7 @@ Module weakestpre_gensym.
   Export SepBasicCore.
   Import reduction.
 
-  Definition iProp := monPred biInd (@hpropList ident).
+  Definition iProp := monPred biInd (@hpropI ident positive_eq_dec pos_countable).
 
 (* =wp= *)
 Fixpoint wp {X} (e1 : mon X) (Q : X -> iProp) : iProp :=
@@ -315,14 +315,28 @@ Module adequacy.
   Import Errors.
   Export weakestpre_gensym.
 
+  Fixpoint seqPos start len : heap :=
+    match len with
+    | O => ∅
+    | S n => <[start := tt]>(seqPos (start - 1)%positive n)
+    end.
 
-  Definition inject n :=
+  Definition inject_aux n :=
     List.map Pos.of_nat
              (seq (Pos.to_nat (first_unused_ident ())) (Pos.to_nat n - Pos.to_nat (first_unused_ident ()))).
 
-  Lemma inject_last : forall n, Pos.le (first_unused_ident ()) n -> inject (Pos.succ n) = inject n ++ [n].
+  (* Lemma next_disjoint : forall n, (inject n) ##ₘ {[n := tt]}. *)
+  (* Proof. *)
+  (*   intro. apply map_disjoint_singleton_r. apply ord_disjoint. auto. *)
+  (* Qed. *)
+
+  (* Definition inject n := *)
+  (*   List.map Pos.of_nat *)
+  (*            (seq (Pos.to_nat (first_unused_ident ())) (Pos.to_nat n - Pos.to_nat (first_unused_ident ()))). *)
+
+  Lemma inject_last : forall n, Pos.le (first_unused_ident ()) n -> inject_aux (Pos.succ n) = inject_aux n ++ [n].
   Proof.
-    intros n lt. unfold inject. rewrite <- (Pos2Nat.id n).
+    intros n lt. unfold inject_aux. rewrite <- (Pos2Nat.id n).
     assert (forall (n : nat), [Pos.of_nat n] = Pos.of_nat n :: map Pos.of_nat nil) by auto.
     rewrite H. rewrite <- map_cons. rewrite <- map_app. f_equal.
     rewrite Pos2Nat.id. assert (forall (n : nat), [n] = seq n 1) by auto. rewrite H0.
@@ -330,18 +344,67 @@ Module adequacy.
     rewrite <- H1 at 2. rewrite <- seq_app. f_equal. lia.
   Qed.
 
-  Lemma next_disjoint : forall n, Pos.le (first_unused_ident ()) n -> list_disjoint (inject n) [n].
+  Lemma next_disjoint : forall n, Pos.le (first_unused_ident ()) n ->  (inject_aux n) ## [n].
   Proof.
-    intros n P x y P0 P1 eq. subst. inversion P1. subst.
-    - unfold inject in P0. apply Coqlib.list_in_map_inv in P0. destruct P0 as [x [P0 P2]].
+    repeat intro. inversion H1. subst.
+    - unfold inject_aux in H0. apply elem_of_list_In in H0. apply Coqlib.list_in_map_inv in H0.
+      destruct H0 as [x [P0 P2]].
       apply in_seq in P2. destruct P2. lia.
-    - inversion H.
+    - inversion H4.
   Qed.
 
-  Lemma unused_nil : inject (first_unused_ident ()) = nil.
+  Lemma unused_nil : inject_aux (first_unused_ident ()) = nil.
   Proof.
-    unfold inject. rewrite PeanoNat.Nat.sub_diag. simpl. reflexivity.
+    unfold inject_aux. rewrite PeanoNat.Nat.sub_diag. simpl. reflexivity.
   Qed.
+
+  Definition inject n : (@heap ident positive_eq_dec pos_countable) := list_to_map (List.map (fun n => (n,tt)) (inject_aux n)).
+
+  Lemma unused_map : inject (first_unused_ident ()) = ∅.
+  Proof.
+    unfold inject. rewrite unused_nil. simpl. auto.
+  Qed.
+
+  Lemma fst_fmap : forall l, (map (λ n0 : positive, (n0, ())) l).*1 = l.
+  Proof.
+    induction l; simpl; auto.
+    f_equal. unfold fmap in IHl. apply IHl.
+  Qed.
+
+
+  Lemma inject_last_heap : forall n,
+      Pos.le (first_unused_ident ()) n -> inject (Pos.succ n) = <[n:=tt]>(inject n).
+  Proof.
+    intros. unfold inject. rewrite inject_last; auto. rewrite map_app. simpl.
+    rewrite list_to_map_snoc. auto. rewrite fst_fmap. intro.
+    apply elem_of_list_In in H0. eapply next_disjoint; eauto. eapply elem_of_list_In; eauto.
+    constructor.
+  Qed.
+
+  Lemma list_to_map_In : forall l n, (list_to_map (map (λ n0 : positive, (n0, ())) l) : heap) !! n = None <->
+                      not (In n l).
+  Proof.
+    split; intro.
+    - induction l. intro. inversion H0.
+      intro. destruct (Pos.eq_dec n a).
+      + subst. simpl in *. rewrite lookup_insert in H. inversion H.
+      + inversion H0. subst. contradiction.
+        * apply IHl; auto. simpl in H. rewrite lookup_insert_ne in H; auto.
+    - induction l; simpl.
+      + rewrite lookup_empty. auto.
+      + destruct (Pos.eq_dec n a).
+        * subst. exfalso. apply H. apply in_eq.
+        * rewrite lookup_insert_ne; auto. apply IHl. intro. apply H.
+          right; auto.
+  Qed.
+
+  Lemma inject_disjoint : forall n, Pos.le (first_unused_ident ()) n -> inject n ##ₘ {[n := ()]}.
+  Proof.
+    intros. apply map_disjoint_singleton_r. unfold inject.
+    rewrite list_to_map_In. intro. eapply next_disjoint; eauto.
+    apply elem_of_list_In; eauto. constructor.
+  Qed.
+
 
   Section Eval_Adequacy.
     Variable X: Type.
@@ -363,8 +426,8 @@ Module adequacy.
       - simpl in *. eapply ind.
         3 : apply H1.
         + simpl. lia.
-        + iIntros "HA". simpl. rewrite inject_last; auto.
-          iDestruct (heap_ctx_split with "HA") as "[HA HB]". apply next_disjoint; auto.
+        + iIntros "HA". simpl. rewrite inject_last_heap; auto.
+          iDestruct (heap_ctx_split_sing with "HA") as "[HA HB]". apply inject_disjoint; auto.
           iDestruct (H0 with "HA") as "HA".
           iApply ("HA" with "HB").
       - simpl in *. eapply ind; eauto. iIntros "HA". iApply (H0 with "HA").
@@ -376,7 +439,7 @@ Module adequacy.
         (Q v) () (inject (gen_next g)).
     Proof.
       intros. eapply adequacy_wp; eauto. simpl. lia.
-      rewrite unused_nil. auto.
+      rewrite unused_map. auto.
     Qed.
 
 (* =adequacy_core= *)
@@ -439,7 +502,7 @@ Lemma adequacy: forall m Q v,
     destruct (eval m (initial_generator tt)) eqn:H2.
     destruct p. inversion H0. subst.
     eapply adequacy_pure; eauto.
-    simpl. lia. rewrite unused_nil.
+    simpl. lia. rewrite unused_map.
     iIntros "_".
     iApply H. auto.
     inversion H0.
