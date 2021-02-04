@@ -57,9 +57,10 @@ Definition dest_below (dst: destination) : iProp :=
       (∃ t, ⌜ ls = make_set t e1 :: nil /\ e = Etempvar t ty⌝ ∗ & t)%I
     else
       ⌜ls =nil /\ e = e1⌝%I.
-  (* =tr_expr_iprop= *)
-Fixpoint tr_expr (*[*)(le : temp_env)(*]*) (dst : destination) (*[*)(e : Csyntax.expr) (sl : list statement ) (a : expr) (*]*) : iProp :=
-  (* =end= *)
+(* =tr_expr_iprop= *)
+Fixpoint tr_expr (*[*)(le : temp_env)(*]*) (dst : destination) (*[*)(e : Csyntax.expr)
+         (sl : list statement ) (a : expr) (*]*) : iProp :=
+(* =end= *)
     (<absorb>
      match e with
      | Csyntax.Evar id ty =>
