@@ -190,9 +190,9 @@ Definition sd_seqbool_set (ty: type) (sd: set_destination) :=
   let tmp :=  sd_temp sd in SDcons type_bool ty tmp sd.
 
 (* =transl_expr= *)
-Fixpoint transl_expr (dst: destination) (*[*)(a: Csyntax.expr) (*]*): mon (*[*)(list statement * expr) (*]*):=
-  (* =end= *)
-  match a with
+Fixpoint transl_expr (dst: destination) (*[*)(a: Csyntax.expr) (*]*): mon (*[*)(list statement * expr) (*]*)
+(* =end= *)
+:=  match a with
   | Csyntax.Eloc b ofs ty =>
       error (msg "SimplExpr.transl_expr: Eloc")
   | Csyntax.Evar x ty =>

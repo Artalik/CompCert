@@ -425,23 +425,23 @@ Fixpoint tr_expr (*[*)(le : temp_env)(*]*) (dst : destination) (*[*)(e : Csyntax
 
 
   Section TR_TOP.
-(* =tr_top= *)
 Variable ge: genv.
 Variable e: Clight.env.
 Variable le: temp_env.
 Variable m: mem.
 
-Inductive tr_top: destination -> Csyntax.expr -> list statement -> expr ->  Prop :=
+(* =tr_top= *)
+Inductive tr_top: (*[*)destination -> Csyntax.expr -> list statement -> expr ->(*]*)  Prop :=
 (* =end= *)
 
-| tr_top_val_val: forall v ty a,
-    typeof a = ty -> eval_expr ge e le m a v ->
-    tr_top For_val (Csyntax.Eval v ty) nil a
+| tr_top_val_val: (*[*) forall v ty a, (*]*)
+    (*[*)typeof a = ty -> eval_expr ge e le m a v(*]*) ->
+    tr_top (*[*)For_val (Csyntax.Eval v ty) nil a(*]*)
 
 (* =tr_top_base= *)
-| tr_top_base: forall dst r sl a tmp,
-    tr_expr le dst r sl a () tmp ->
-    tr_top dst r sl a.
+| tr_top_base: forall (*[*)dst r sl a(*]*) tmp,
+    tr_expr (*[*)le dst r sl a ()(*]*) tmp ->
+    tr_top (*[*)dst r sl a(*]*).
 (* =end= *)
 
   End TR_TOP.

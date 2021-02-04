@@ -105,12 +105,12 @@ Module gensym.
 Record generator : Type := mkgenerator { gen_next : ident;
                                          gen_trail: list (ident * type)
                                        }.
-
+(* =end= *)
 Parameter first_unused_ident : unit -> ident.
 
 Definition initial_generator (x : unit) : generator :=
   mkgenerator (first_unused_ident x) nil.
-(* =end= *)
+
 (* =mon= *)
 Inductive mon (X : Type) : Type :=
 | ret : X -> mon X
@@ -295,17 +295,23 @@ Ltac Frame := eapply intro_true_r; eapply frame.
 (** Effects rules *)
 
 (* =gensym_spec= *)
-Lemma rule_gensym t : ⊢{{ emp }} gensym t {{ l; & l }}.
+Lemma rule_gensym ty : ⊢{{ emp }} gensym ty {{ ident; & ident }}.
 (* =end= *)
 Proof. simpl; auto. Qed.
 
+Section RuleError.
+Variable X : Type.
+Implicit Type Q: X -> iProp.
+
 (* =error_spec= *)
-Lemma rule_error {X} (Q : X -> iProp) e : ⊢{{ True }} error e {{ v; Q v }}.
+Lemma rule_error Q e: ⊢{{ True }} error e {{ v; Q v }}.
 (* =end= *)
 Proof. auto. Qed.
 
+End RuleError.
+
 (* =trail_spec= *)
-Lemma rule_trail  : ⊢{{ emp }} trail tt {{ _; emp  }}.
+Lemma rule_trail : ⊢{{ emp }} trail tt {{ _; emp  }}.
 (* =end= *)
 Proof. auto. Qed.
 
