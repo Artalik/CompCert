@@ -16,26 +16,26 @@ Context {countX : Countable ident}.
 (* =hprop= *)
 Definition hprop := gset ident -> Prop.
 (* =end= *)
-  Definition hand (H1 H2 : hprop) : hprop :=
-    fun h => H1 h /\ H2 h.
+  Definition hand (P1 P2 : hprop) : hprop :=
+    fun idents => P1 idents /\ P2 idents.
 
   Definition hor (H1 H2 : hprop) : hprop := fun h => H1 h \/ H2 h.
 
   Definition hempty : hprop := fun h => h = ∅.
 
 (* =hsingle= *)
-Definition hsingle ident : hprop := fun h =>  h = {[ ident ]}.
+Definition hsingle ident : hprop := fun idents => idents = {[ ident ]}.
 (* =end= *)
 
   Definition set_ctx (ctx : gset ident) : hprop := fun h => h = ctx.
-(* Notation "n '##' m" := (n ##ₘ m). *)
+
 (* =hstar= *)
-Definition hstar (H1 H2 : hprop) : hprop :=
-  fun h => exists h1 h2, H1 h1 /\ H2 h2 /\ h1 ## h2 /\ h = h1 ∪ h2.
+Definition hstar (P1 P2 : hprop) : hprop :=
+  fun idents => exists ids1 ids2, P1 ids1 /\ P2 ids2 /\ ids1 ## ids2 /\ idents = ids1 ∪ ids2.
 
 (* =end= *)
 (* =hquantifier= *)
-Definition hexists {A} (J : A -> hprop) : hprop := fun h => exists x, J x h.
+Definition hexists {A} (f : A -> hprop) : hprop := fun h => exists x, f x h.
 Definition hforall {A} (f : A -> hprop) : hprop := fun h => forall a, f a h.
 (* =end= *)
 
