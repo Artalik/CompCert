@@ -32,7 +32,7 @@ Definition hsingle ident : hprop := fun idents => idents = {[ ident ]}.
 (* =hstar= *)
   Definition hstar (P1 P2 : hprop) : hprop :=
     fun idents =>
-      exists ids1 ids2, P1 ids1 /\ P2 ids2 /\ ids1 ## ids2 /\ idents = ids1 ∪ ids2.
+     exists ids1 ids2, P1 ids1 /\ P2 ids2 /\ ids1 ## ids2 /\ idents = ids1 ∪ ids2.
 
 (* =end= *)
 (* =hquantifier= *)
