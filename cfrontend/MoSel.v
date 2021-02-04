@@ -103,8 +103,7 @@ Module gensym.
 
 (* =generator= *)
 Record generator : Type := mkgenerator { gen_next : ident;
-                                         gen_trail: list (ident * type)
-                                       }.
+                                         gen_trail: list (ident * type) }.
 (* =end= *)
 Parameter first_unused_ident : unit -> ident.
 
