@@ -969,14 +969,15 @@ Qed.
 
 
 (** Matching between states *)
-
+(* =match_states= *)
 Inductive match_states: Csem.state -> Clight.state -> Prop :=
   | match_exprstates: forall f r k e m tf sl tk le dest a,
-      tr_function f tf ->
-      tr_top tge e le m dest r sl a ->
-      match_cont_exp dest a k tk ->
+      tr_function (*[*)f tf (*]*)->
+      tr_top (*[*) tge e le m dest r sl a (*]*)->
+      match_cont_exp (*[*)dest a k tk(*]*) ->
       match_states (Csem.ExprState f r k e m)
                    (State tf Sskip (Kseqlist sl tk) e le m)
+(* =end= *)
   | match_regularstates: forall f s k e m tf ts tk le,
       tr_function f tf ->
       tr_stmt s ts ->
