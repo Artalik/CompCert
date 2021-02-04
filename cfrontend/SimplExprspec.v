@@ -35,13 +35,13 @@ Section SPEC.
   matching the given temporary environment [le].
    *)
 
-  (* =dest_below_iprop= *)
+(* =dest_below_iprop= *)
 Definition dest_below (dst: destination) : iProp :=
   match dst with
   | For_set sd => & (sd_temp sd)
   | _ => emp
   end.
-  (* =end= *)
+(* =end= *)
 
   Definition final (dst: destination) (a: expr) : list statement :=
     match dst with
@@ -179,7 +179,7 @@ Fixpoint tr_expr (*[*)(le : temp_env)(*]*) (dst : destination) (*[*)(e : Csyntax
       tr_expr le (For_set (SDcons ty ty t sd)) e3 sl4 a4) ∗
       ⌜ sl = sl2 ++ makeif a2 (makeseq sl3) (makeseq sl4) :: nil ⌝
      end
-    (* =assign_spec_iprop= *)
+(* =assign_spec_iprop= *)
   | Csyntax.Eassign e1 e2 ty =>
     match dst with
     | For_val | For_set _ =>
@@ -192,7 +192,7 @@ Fixpoint tr_expr (*[*)(le : temp_env)(*]*) (dst : destination) (*[*)(e : Csyntax
                        make_assign a2 (Etempvar t (Csyntax.typeof e1)) ::
                        final dst (Etempvar t (Csyntax.typeof e1)) /\
        a = Etempvar t (Csyntax.typeof e1)(*]*)⌝
-    (* =end= *)
+(* =end= *)
       | For_effects =>
         ∃ sl2 a2 sl3 a3,
        tr_expr le For_val e1 sl2 a2  ∗
@@ -357,12 +357,12 @@ Fixpoint tr_expr (*[*)(le : temp_env)(*]*) (dst : destination) (*[*)(e : Csyntax
     with exprlist_ind2 := Induction for Csyntax.exprlist Sort Prop.
   Combined Scheme tr_expr_exprlist from expr_ind2, exprlist_ind2.
 
-  (* =transl_meets_spec_iprop= *)
-  Lemma transl_meets_spec :
-    (forall r dst,
-        ⊢ {{ emp }} transl_expr (*[*)dst r (*]*)
-       {{ res; dest_below dst -∗ (*[*)∀ le, (*]*)tr_expr (*[*) le (*]*) dst (*[*) r res.1 res.2 (*]*) }})
-  (* =end= *)
+(* =transl_meets_spec_iprop= *)
+Lemma transl_meets_spec :
+  (forall r dst,
+      ⊢ {{ emp }} transl_expr (*[*)dst r (*]*)
+        {{ res; dest_below dst -∗ (*[*)∀ le, (*]*)tr_expr (*[*) le (*]*) dst (*[*) r res.1 res.2 (*]*) }})
+(* =end= *)
     /\
     (forall rl,
         ⊢{{ emp }} transl_exprlist rl {{ res; ∀ le, tr_exprlist le rl res.1 res.2 }}).
@@ -598,10 +598,10 @@ with tr_lblstmts: Csyntax.labeled_statements -> labeled_statements -> Prop :=
     | _ => idtac
     end.
 
-  (* =transl_stmt_meets_spec= *)
-  Lemma transl_stmt_meets_spec : forall s,
-      ⊢ {{ emp }} transl_stmt s {{ res; ⌜ tr_stmt s res ⌝}}
-  (* =end= *)
+(* =transl_stmt_meets_spec= *)
+Lemma transl_stmt_meets_spec : forall s,
+    ⊢ {{ emp }} transl_stmt s {{ res; ⌜ tr_stmt s res ⌝}}
+(* =end= *)
   with transl_lblstmt_meets_spec:
          forall s,
            ⊢ {{ emp }} transl_lblstmt s {{ res; ⌜ tr_lblstmts s res ⌝ }}.
