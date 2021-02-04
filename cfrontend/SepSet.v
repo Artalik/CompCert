@@ -10,11 +10,11 @@ Notation "P ==> Q" := (pred_incl P Q).
 
 Section hprop.
 
+Context {ident : Type}.
+Context {eqX : EqDecision ident}.
+Context {countX : Countable ident}.
 (* =hprop= *)
-Context {X : Type}.
-Context {eqX : EqDecision X}.
-Context {countX : Countable X}.
-Definition hprop := gset X -> Prop.
+Definition hprop := gset ident -> Prop.
 (* =end= *)
   Definition hand (H1 H2 : hprop) : hprop :=
     fun h => H1 h /\ H2 h.
@@ -24,7 +24,7 @@ Definition hprop := gset X -> Prop.
   Definition hempty : hprop := fun h => h = ∅.
 
 (* =hsingle= *)
-Definition hsingle l : hprop := fun h =>  h = {[ l ]}.
+Definition hsingle ident : hprop := fun h =>  h = {[ ident ]}.
 (* =end= *)
 
   Definition set_ctx (ctx : gset ident) : hprop := fun h => h = ctx.
@@ -57,7 +57,7 @@ Definition hpure (P : Prop) : hprop := fun _ => P.
   Lemma hempty_intro : hempty ∅.
   Proof using. reflexivity. Qed.
 
-  Local Notation "'empty'" := (∅ : gset X).
+  Local Notation "'empty'" := (∅ : gset ident).
 
   Local Notation "h1 \u h2" := (h1 ∪ h2) (at level 37, right associativity).
 
@@ -209,9 +209,9 @@ Definition hpure (P : Prop) : hprop := fun _ => P.
 
   Program Canonical Structure biInd := BiIndex unit inhabited_unit _ PreOrder_unit.
 
-  Definition single (l : X) : @monPred biInd hpropI := MonPred (fun _ => hsingle l) _.
+  Definition single (l : ident) : @monPred biInd hpropI := MonPred (fun _ => hsingle l) _.
 
-  Definition ctx (h : gset X) : monPred biInd hpropI := MonPred (fun _ => set_ctx h) _.
+  Definition ctx (h : gset ident) : monPred biInd hpropI := MonPred (fun _ => set_ctx h) _.
 
   Ltac inv H := inversion H; clear H; subst.
 
@@ -285,7 +285,7 @@ Lemma singleton_neq : forall l l', ⊢ & l -∗ & l' -∗ ⌜l ≠ l'⌝.
   Qed.
 
 (* =equivalence= *)
-Lemma equivalence (Φ : iProp) h : Φ () h <-> (⊢&& h -∗ Φ).
+Lemma equivalence (P: iProp) idents: P () idents <-> (⊢ && idents -∗ P).
 (* =end= *)
   Proof.
     split.
@@ -293,7 +293,7 @@ Lemma equivalence (Φ : iProp) h : Φ () h <-> (⊢&& h -∗ Φ).
     apply soundness.
   Qed.
 
-  Lemma heap_ctx_split (h h' : gset X) : h ## h' -> (⊢&& (h \u h') -∗ && h ∗ && h').
+  Lemma heap_ctx_split (h h' : gset ident) : h ## h' -> (⊢&& (h \u h') -∗ && h ∗ && h').
   Proof.
     MonPred.unseal. split. MonPred.unseal. repeat red.
     intros. exists hempty. inversion H0; subst.
@@ -305,7 +305,7 @@ Lemma equivalence (Φ : iProp) h : Φ () h <-> (⊢&& h -∗ Φ).
     + rewrite union_empty_l_L. reflexivity.
   Qed.
 
-  Lemma heap_ctx_split_sing (h : gset X) l : h ## ({[ l ]}) ->
+  Lemma heap_ctx_split_sing (h : gset ident) l : h ## ({[ l ]}) ->
                                              (⊢&& ({[ l ]} \u h) -∗ && h ∗ & l).
   Proof.
     iIntros (?) "HA". iApply heap_ctx_split; auto. rewrite union_comm_L. auto.
