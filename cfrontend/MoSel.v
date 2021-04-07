@@ -164,6 +164,8 @@ Definition trail (_ : unit): mon (list (ident * type)) := trailOp tt ret.
     all : simpl; do 2 f_equal; apply functional_extensionality; intro; apply m.
   Qed.
 
+  Open Scope positive_scope.
+
 (* =eval= *)
 Fixpoint eval {X} (m : mon X) : generator -> res (generator * X) :=
   match m with
@@ -173,7 +175,7 @@ Fixpoint eval {X} (m : mon X) : generator -> res (generator * X) :=
     fun s =>
       let h := gen_trail s in
       let n := gen_next s in
-      eval (f n) (mkgenerator (Pos.succ n) ((n,ty) :: h))
+      eval (f n) (mkgenerator (n+1) ((n,ty) :: h))
   | trailOp _ f =>
     fun s =>
       let h := gen_trail s in
@@ -189,6 +191,7 @@ Definition run {X} (m: mon X): res X :=
   end.
 (* =end= *)
 
+Close Scope positive_scope.
 End gensym.
 
 Module weakestpre_gensym.
@@ -326,7 +329,7 @@ Module adequacy.
                   (Pos.to_nat n - Pos.to_nat (first_unused_ident ()))).
 
   Lemma inject_last : forall n,
-      Pos.le (first_unused_ident ()) n -> inject_aux (Pos.succ n) = inject_aux n ++ [n].
+      Pos.le (first_unused_ident ()) n -> inject_aux (n+1) = inject_aux n ++ [n].
   Proof.
     intros n lt. unfold inject_aux. rewrite <- (Pos2Nat.id n).
     assert (forall (n : nat), [Pos.of_nat n] = Pos.of_nat n :: map Pos.of_nat nil) by auto.
@@ -361,7 +364,7 @@ Module adequacy.
   Qed.
 
   Lemma inject_last_set : forall n,
-      Pos.le (first_unused_ident ()) n -> inject (Pos.succ n) = {[ n ]} ∪ (inject n).
+      Pos.le (first_unused_ident ()) n -> inject (n+1) = {[ n ]} ∪ (inject n).
   Proof.
     intros. unfold inject. rewrite inject_last; auto.
     rewrite list_to_set_app_L. simpl. rewrite union_empty_r_L.
